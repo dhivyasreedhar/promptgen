@@ -10,7 +10,7 @@ import { selectPrompts, summarizeCoverage } from "../prompts/select.js";
 import { attachPromptContext } from "../prompts/provenance.js";
 import { repairCandidates } from "../prompts/repair.js";
 import { planEvidenceNeeds } from "../retrieval/planner.js";
-import { EvidenceRetriever } from "../retrieval/retriever.js";
+import { EvidenceRetriever, rankEvidenceCandidates } from "../retrieval/retriever.js";
 import { HostedEvidenceRetriever } from "../retrieval/hosted-retriever.js";
 import { embeddingInputHash, OllamaEmbeddingProvider, type EmbeddingProvider } from "../retrieval/embeddings.js";
 import { EvidenceDatabase } from "../store/database.js";
@@ -22,6 +22,7 @@ import { hash, isoNow, log, newRunId } from "../util.js";
 import { classifyFailure } from "../operations/errors.js";
 import { operationalMetrics } from "../operations/metrics.js";
 import { transformEvidenceForExternal } from "../privacy/transform.js";
+import { isBuyingSignal } from "../context/intent.js";
 
 export interface RunOptions { fixtures: boolean; timeoutMs?: number; signal?: AbortSignal }
 
@@ -179,9 +180,11 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
         query: pack.need.query, evidenceIds: pack.records.map(item => item.evidence.id), reconciliation: pack.reconciliation ?? [],
       }, pack.need.id);
     }
-    const candidates = generatedCandidates.map(candidate => ({ ...candidate,
-      evidenceIds: [...new Set([...candidate.evidenceIds, ...(candidatePackById.get(candidate.id)?.records.map(item => item.evidence.id) ?? [])])].slice(0, 8),
-    }));
+    const candidates = generatedCandidates.map(candidate => {
+      const targeted = candidatePackById.get(candidate.id)?.records.map(item => item.evidence) ?? [];
+      const opportunityIds = opportunities.find(item => item.id === candidate.opportunityId)?.evidenceIds ?? [];
+      return { ...candidate, evidenceIds: groundEvidenceIds(candidate.text, [...candidate.evidenceIds, ...opportunityIds], targeted, evidenceById) };
+    });
     for (const candidate of candidates) {
       const opportunity = opportunities.find(item => item.id === candidate.opportunityId);
       if (opportunity) opportunity.evidenceIds = [...new Set([...opportunity.evidenceIds, ...candidate.evidenceIds])];
@@ -222,7 +225,24 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
           evidence: uncovered.flatMap(item => item.evidenceIds.map(id => evidenceById.get(id))),
         }, () => model.generate(company, uncovered, evidenceById, controller.signal));
         const existingIds = new Set(candidates.map(item => item.id));
-        const backfillCandidates = generatedBackfill.filter(item => !existingIds.has(item.id));
+        const rawBackfillCandidates = generatedBackfill.filter(item => !existingIds.has(item.id));
+        const backfillNeeds: EvidenceNeed[] = rawBackfillCandidates.map(candidate => ({
+          id: `backfill:${candidate.id}`, query: candidate.text, kinds: ["demand", "language", "capability", "constraint"],
+          reason: "Backfill candidate-specific entailment and conflict check", preferredSources: ["web", "github", "gsc", "intercom", "slack", "calls", "linear"],
+        }));
+        const backfillPacks = await retrieve(backfillNeeds);
+        const backfillPackById = new Map(backfillPacks.map(pack => [pack.need.id.slice("backfill:".length), pack]));
+        for (const pack of backfillPacks) {
+          for (const item of pack.records) evidenceById.set(item.evidence.id, item.evidence);
+          trace.record("candidate-retrieve", pack.missing ? "backfill-context-missing" : "backfill-context-found", {
+            query: pack.need.query, evidenceIds: pack.records.map(item => item.evidence.id), reconciliation: pack.reconciliation ?? [],
+          }, pack.need.id);
+        }
+        const backfillCandidates = rawBackfillCandidates.map(candidate => {
+          const targeted = backfillPackById.get(candidate.id)?.records.map(item => item.evidence) ?? [];
+          const opportunityIds = uncovered.find(item => item.id === candidate.opportunityId)?.evidenceIds ?? [];
+          return { ...candidate, evidenceIds: groundEvidenceIds(candidate.text, [...candidate.evidenceIds, ...opportunityIds], targeted, evidenceById) };
+        });
         metrics.candidatesGenerated += backfillCandidates.length;
         const backfillRepairs = repairCandidates(backfillCandidates, uncovered, evidenceById);
         const backfillDeterministic = validateCandidates(company, backfillRepairs.map(item => item.repaired), uncovered, evidenceById);
@@ -312,6 +332,34 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
     options.signal?.removeEventListener("abort", relayAbort);
     await metadata?.close();
   }
+}
+
+function groundEvidenceIds(query: string, originalIds: string[], targeted: EvidenceRecord[], evidenceById: Map<string, EvidenceRecord>): string[] {
+  const selected = targeted.slice(0, 8);
+  const originalRecords = [...new Set(originalIds)].map(id => evidenceById.get(id)).filter((item): item is EvidenceRecord => Boolean(item));
+  const original = rankEvidenceCandidates(originalRecords.map((record, index) => ({ record, lexicalRank: index + 1 })), {
+    id: "candidate-fallback", query, kinds: ["demand", "language", "capability", "constraint"],
+    reason: "Rank missing evidence roles", preferredSources: [],
+  }).map(item => item.evidence);
+  const addRequired = (record: EvidenceRecord | undefined) => {
+    if (!record || selected.some(item => item.id === record.id)) return;
+    if (selected.length >= 8) selected.pop();
+    selected.unshift(record);
+  };
+  if (!selected.some(isBuyingSignal)) {
+    addRequired(original.find(isBuyingSignal));
+  }
+  if (!selected.some(record => record.kind === "capability" || (record.kind === "change" && record.lifecycle === "confirmed"))) {
+    addRequired(original.find(record => record.kind === "capability" || (record.kind === "change" && record.lifecycle === "confirmed")));
+  }
+  for (const record of original) {
+    if (selected.length >= 2) break;
+    addRequired(record);
+  }
+  const buying = selected.find(isBuyingSignal);
+  const capability = selected.find(record => record.kind === "capability" || (record.kind === "change" && record.lifecycle === "confirmed"));
+  if (buying && capability) return [...new Set([buying.id, capability.id])];
+  return selected.slice(0, 4).map(record => record.id);
 }
 
 async function backfillEmbeddings(metadata: PostgresMetadataStore, companyId: string, provider: EmbeddingProvider,

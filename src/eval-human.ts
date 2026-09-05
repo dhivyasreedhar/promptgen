@@ -16,6 +16,7 @@ const retrievalCaseSchema = z.object({
   id: z.string(), companyId: z.string(), topic: z.string(), variant: z.string(), query: z.string(),
   kinds: z.array(z.enum(KINDS)), accessScopes: z.array(z.string()), candidateEvidenceIds: z.array(z.string()).max(50),
   rankedEvidenceIds: z.array(z.string()).max(12),
+  claimGroupKeys: z.record(z.string(), z.string()).optional(),
   status: statusSchema, judgments: z.array(retrievalJudgmentSchema),
   resolution: retrievalJudgmentSchema.optional(),
 });

@@ -10,5 +10,7 @@ describe("buying-intent classification", () => {
   it("recognizes evaluation and purchase situations", () => {
     expect(classifyBuyerIntent("Which enterprise security vendors should we shortlist?")).toBe("evaluation");
     expect(classifyBuyerIntent("What does this platform cost for procurement?")).toBe("purchase");
+    expect(classifyBuyerIntent("Which incident response tools surface the right runbook during an outage?")).toBe("evaluation");
+    expect(classifyBuyerIntent("What APIs provide reliable error handling for document parsing?")).toBe("evaluation");
   });
 });

@@ -22,6 +22,7 @@
     "eval:annotate": "tsx scripts/annotate-eval.ts",
     "eval:judge": "tsx src/cli.ts eval-judge",
     "eval:judge:report": "tsx src/cli.ts eval-judge-report",
+    "eval:rerank": "tsx src/cli.ts eval-rerank",
     "postgres:migrate": "tsx src/cli.ts postgres-migrate",
     "postgres:health": "tsx src/cli.ts postgres-health",
     "postgres:search": "tsx src/cli.ts postgres-search",

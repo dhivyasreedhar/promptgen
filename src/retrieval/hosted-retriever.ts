@@ -1,10 +1,9 @@
 import { DEFAULT_ACCESS } from "../context/policy.js";
 import type { EvidenceDatabase } from "../store/database.js";
 import type { PostgresMetadataStore } from "../store/postgres-metadata.js";
-import type { AccessContext, EvidenceNeed, EvidencePack, RankedEvidence, SourceType } from "../types.js";
-import { EvidenceRetriever } from "./retriever.js";
+import type { AccessContext, EvidenceNeed, EvidencePack, RankedEvidence } from "../types.js";
+import { EvidenceRetriever, rankCandidatePool } from "./retriever.js";
 import type { EmbeddingProvider, StoredEmbedding } from "./embeddings.js";
-import { reconcileRankedEvidence } from "../context/reconcile.js";
 
 export class HostedEvidenceRetriever {
   private embeddingUnavailable = false;
@@ -16,6 +15,7 @@ export class HostedEvidenceRetriever {
 
   async retrieve(companyId: string, needs: EvidenceNeed[], perNeed = 12, access: AccessContext = DEFAULT_ACCESS): Promise<EvidencePack[]> {
     const localPacks = new EvidenceRetriever(this.local).retrieve(companyId, needs, perNeed * 3, access);
+    const health = new Map(this.local.sourceHealth(companyId).map(item => [item.source, item]));
     const queryEmbeddings = await this.embedNeeds(needs);
     return mapConcurrent(needs, 3, async (need, index) => {
       let hits: Awaited<ReturnType<PostgresMetadataStore["searchEvidence"]>> = [];
@@ -37,9 +37,9 @@ export class HostedEvidenceRetriever {
         const prior = fused.get(item.evidence.id); fused.set(item.evidence.id, { evidence: item.evidence,
           score: (prior?.score ?? 0) + 1 / (60 + rank + 1), reasons: [...(prior?.reasons ?? []), "local-recall-rank", ...item.reasons] });
       });
-      const reconciled = reconcileRankedEvidence([...fused.values()]);
-      const records = diversify(reconciled.records, need, perNeed);
-      return { need, records, missing: records.length < 2, reconciliation: reconciled.decisions };
+      const fusedOrder = [...fused.values()].sort((left, right) => right.score - left.score);
+      const selected = rankCandidatePool(fusedOrder.map((item, rank) => ({ record: item.evidence, lexicalRank: rank + 1 })), need, perNeed, access, health);
+      return { need, records: selected.records, missing: selected.records.length < 2, reconciliation: selected.reconciliation };
     });
   }
 
@@ -70,22 +70,4 @@ async function mapConcurrent<T, R>(items: T[], concurrency: number, work: (item:
     }
   }));
   return results;
-}
-
-function diversify(records: RankedEvidence[], need: EvidenceNeed, limit: number): RankedEvidence[] {
-  const selected: RankedEvidence[] = []; const sourceCounts = new Map<SourceType, number>();
-  const ordered = records.sort((a,b)=>b.score-a.score);
-  for (const kind of need.kinds) {
-    const item = ordered.find(candidate => candidate.evidence.kind === kind && !selected.includes(candidate));
-    if (item) { selected.push(item); sourceCounts.set(item.evidence.source, (sourceCounts.get(item.evidence.source) ?? 0) + 1); }
-  }
-  for (const item of ordered) {
-    if (selected.includes(item)) continue;
-    const count = sourceCounts.get(item.evidence.source) ?? 0;
-    const cap = need.preferredSources.includes(item.evidence.source) ? Math.max(3, Math.ceil(limit / 2)) : Math.max(2, Math.ceil(limit / 3));
-    if (count >= cap) continue;
-    selected.push(item); sourceCounts.set(item.evidence.source, count + 1);
-    if (selected.length === limit) break;
-  }
-  return selected;
 }

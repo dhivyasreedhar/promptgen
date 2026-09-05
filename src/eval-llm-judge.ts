@@ -5,6 +5,9 @@ import { z } from "zod";
 import type { AppConfig } from "./config.js";
 import { transformEvidenceForExternal } from "./privacy/transform.js";
 import { EvidenceDatabase } from "./store/database.js";
+import { rankCandidatePool } from "./retrieval/retriever.js";
+import type { EvidenceKind, EvidenceNeed } from "./types.js";
+import { normalizeText, stableId } from "./util.js";
 
 const relevanceSchema = z.enum(["relevant", "partial", "irrelevant", "forbidden"]);
 const retrievalResultSchema = z.object({ results: z.array(z.object({
@@ -24,8 +27,23 @@ type Corpus = { cases: Array<Record<string, unknown>> };
 
 export interface LlmJudgeReport {
   provider: string;
-  retrieval: { total: number; twiceJudged: number; agreement: number; poolRecallAt12: number; precisionAt12: number; flaggedForHuman: string[] };
-  prompts: { total: number; twiceJudged: number; acceptanceRate: number; averageBuyerIntent: number; averageRecommendationLikelihood: number; averageEvidenceEntailment: number; averageDistinctness: number; averageNaturalness: number; flaggedForHuman: string[] };
+  retrieval: { total: number; twiceJudged: number; agreement: number; poolRecordRecallAt12: number; uniqueClaimRecallAt12: number; precisionAt12: number; flaggedForHuman: string[] };
+  prompts: {
+    total: number; twiceJudged: number;
+    pipelineAccepted: PromptJudgeAggregate;
+    pipelineRejected: PromptJudgeAggregate;
+    flaggedForHuman: string[];
+  };
+}
+
+interface PromptJudgeAggregate {
+  total: number;
+  judgeAcceptanceRate: number;
+  averageBuyerIntent: number;
+  averageRecommendationLikelihood: number;
+  averageEvidenceEntailment: number;
+  averageDistinctness: number;
+  averageNaturalness: number;
 }
 
 export async function runOpenAiJudge(config: AppConfig): Promise<LlmJudgeReport> {
@@ -51,6 +69,28 @@ export async function readOpenAiJudgeReport(config: AppConfig): Promise<LlmJudge
     loadCorpus(path.join(directory, "retrieval.json")), loadCorpus(path.join(directory, "prompts.json")),
     loadJudge(path.join(directory, "openai-judgments.json"), `openai:${config.openaiJudgeModel}`),
   ]);
+  return report(stored, retrieval, prompts);
+}
+
+export async function rerankFrozenRetrievalCorpus(config: AppConfig): Promise<LlmJudgeReport> {
+  const directory = path.join(config.rootDir, "eval", "annotations");
+  const retrievalPath = path.join(directory, "retrieval.json");
+  const [retrieval, prompts, stored] = await Promise.all([
+    loadCorpus(retrievalPath), loadCorpus(path.join(directory, "prompts.json")),
+    loadJudge(path.join(directory, "openai-judgments.json"), `openai:${config.openaiJudgeModel}`),
+  ]);
+  using db = new EvidenceDatabase(config.dbPath);
+  const healthByCompany = new Map<string, Map<ReturnType<typeof db.sourceHealth>[number]["source"], ReturnType<typeof db.sourceHealth>[number]>>();
+  for (const item of retrieval.cases) {
+    const companyId = String(item.companyId);
+    let health = healthByCompany.get(companyId); if (!health) { health = new Map(db.sourceHealth(companyId).map(entry => [entry.source, entry])); healthByCompany.set(companyId, health); }
+    const ids = item.candidateEvidenceIds as string[]; const byId = new Map(db.evidenceByIds(ids).map(record => [record.id, record]));
+    const matches = ids.flatMap((id, index) => { const record = byId.get(id); return record ? [{ record, lexicalRank: index + 1 }] : []; });
+    const need: EvidenceNeed = { id: String(item.id), query: String(item.query), kinds: item.kinds as EvidenceKind[], reason: "Frozen evaluation rerank", preferredSources: [] };
+    item.rankedEvidenceIds = rankCandidatePool(matches, need, 12, { scopes: item.accessScopes as string[] }, health).records.map(record => record.evidence.id);
+    item.claimGroupKeys = Object.fromEntries([...byId].map(([id, record]) => [id, stableId(normalizeText(record.claim).toLowerCase())]));
+  }
+  await atomicCorpus(retrievalPath, retrieval);
   return report(stored, retrieval, prompts);
 }
 
@@ -111,22 +151,32 @@ async function judgePrompts(client: OpenAI, model: string, corpus: Corpus, store
 
 function report(stored: JudgeFile, retrievalCorpus: Corpus, promptCorpus: Corpus): LlmJudgeReport {
   const rankedByCase = new Map(retrievalCorpus.cases.map(item => [String(item.id), item.rankedEvidenceIds as string[]]));
+  const claimGroupsByCase = new Map(retrievalCorpus.cases.map(item => [String(item.id), (item.claimGroupKeys ?? {}) as Record<string, string>]));
   const retrieval = Object.entries(stored.retrieval).filter((entry): entry is [string, { a: RetrievalResult; b: RetrievalResult }] => Boolean(entry[1].a && entry[1].b));
-  let relevant = 0, hit = 0, retrieved = 0, relevantRetrieved = 0, matchingLabels = 0, totalLabels = 0;
+  let relevant = 0, hit = 0, uniqueRelevant = 0, uniqueHit = 0, retrieved = 0, relevantRetrieved = 0, matchingLabels = 0, totalLabels = 0;
   const retrievalRisk: Array<{ id: string; risk: number }> = [];
   for (const [id, passes] of retrieval) {
     const a = new Map(passes.a.labels.map(label => [label.evidenceId, label.relevance])); const b = new Map(passes.b.labels.map(label => [label.evidenceId, label.relevance]));
     const ids = new Set([...a.keys(), ...b.keys()]); const consensusRelevant = new Set<string>();
     for (const evidenceId of ids) { totalLabels++; if (a.get(evidenceId) === b.get(evidenceId)) matchingLabels++; if (["relevant", "partial"].includes(a.get(evidenceId) ?? "") && ["relevant", "partial"].includes(b.get(evidenceId) ?? "")) consensusRelevant.add(evidenceId); }
     const ranked = rankedByCase.get(id) ?? []; relevant += consensusRelevant.size; hit += ranked.filter(item => consensusRelevant.has(item)).length; retrieved += ranked.length; relevantRetrieved += ranked.filter(item => consensusRelevant.has(item)).length;
+    const groupKeys = claimGroupsByCase.get(id) ?? {};
+    const relevantGroups = new Set([...consensusRelevant].map(evidenceId => groupKeys[evidenceId] ?? evidenceId));
+    const rankedGroups = new Set(ranked.map(evidenceId => groupKeys[evidenceId] ?? evidenceId));
+    uniqueRelevant += relevantGroups.size;
+    uniqueHit += [...relevantGroups].filter(group => rankedGroups.has(group)).length;
     const caseAgreement = [...ids].filter(evidenceId => a.get(evidenceId) === b.get(evidenceId)).length / Math.max(1, ids.size);
     retrievalRisk.push({ id, risk: (1 - caseAgreement) * 3 + (1 - Math.min(passes.a.confidence, passes.b.confidence)) + Number(passes.a.missingEvidenceLikely !== passes.b.missingEvidenceLikely) });
   }
   const prompts = Object.entries(stored.prompts).filter((entry): entry is [string, { a: PromptResult; b: PromptResult }] => Boolean(entry[1].a && entry[1].b));
-  const promptRisk: Array<{ id: string; risk: number }> = []; const consensus = prompts.map(([id, passes]) => { const keys = ["buyerIntent", "recommendationLikelihood", "evidenceEntailment", "distinctness", "naturalness"] as const; const scoreDrift = keys.reduce((sum, key) => sum + Math.abs(passes.a[key] - passes.b[key]), 0); promptRisk.push({ id, risk: Number(passes.a.accept !== passes.b.accept) * 4 + scoreDrift + (1 - Math.min(passes.a.confidence, passes.b.confidence)) }); const scores: Record<string, number | boolean> = Object.fromEntries(keys.map(key => [key, (passes.a[key] + passes.b[key]) / 2])); scores.accept = passes.a.accept && passes.b.accept; return scores; });
-  const avg = (key: string) => consensus.length ? consensus.reduce((sum, item) => sum + Number(item[key]), 0) / consensus.length : 0;
-  return { provider: stored.provider, retrieval: { total: retrievalCorpus.cases.length, twiceJudged: retrieval.length, agreement: totalLabels ? matchingLabels / totalLabels : 0, poolRecallAt12: relevant ? hit / relevant : 0, precisionAt12: retrieved ? relevantRetrieved / retrieved : 0, flaggedForHuman: retrievalRisk.sort((a,b)=>b.risk-a.risk||a.id.localeCompare(b.id)).slice(0,15).map(item=>item.id) },
-    prompts: { total: promptCorpus.cases.length, twiceJudged: prompts.length, acceptanceRate: avg("accept"), averageBuyerIntent: avg("buyerIntent"), averageRecommendationLikelihood: avg("recommendationLikelihood"), averageEvidenceEntailment: avg("evidenceEntailment"), averageDistinctness: avg("distinctness"), averageNaturalness: avg("naturalness"), flaggedForHuman: promptRisk.sort((a,b)=>b.risk-a.risk||a.id.localeCompare(b.id)).slice(0,20).map(item=>item.id) } };
+  const decisions = new Map(promptCorpus.cases.map(item => [String(item.id), String(item.automatedDecision)]));
+  const promptRisk: Array<{ id: string; risk: number }> = []; const consensus = prompts.map(([id, passes]) => { const keys = ["buyerIntent", "recommendationLikelihood", "evidenceEntailment", "distinctness", "naturalness"] as const; const scoreDrift = keys.reduce((sum, key) => sum + Math.abs(passes.a[key] - passes.b[key]), 0); promptRisk.push({ id, risk: Number(passes.a.accept !== passes.b.accept) * 4 + scoreDrift + (1 - Math.min(passes.a.confidence, passes.b.confidence)) }); const scores: Record<string, number | boolean | string> = Object.fromEntries(keys.map(key => [key, (passes.a[key] + passes.b[key]) / 2])); scores.accept = passes.a.accept && passes.b.accept; scores.decision = decisions.get(id) ?? "unknown"; return scores; });
+  const aggregate = (items: Array<Record<string, number | boolean | string>>): PromptJudgeAggregate => {
+    const avg = (key: string) => items.length ? items.reduce((sum, item) => sum + Number(item[key]), 0) / items.length : 0;
+    return { total: items.length, judgeAcceptanceRate: avg("accept"), averageBuyerIntent: avg("buyerIntent"), averageRecommendationLikelihood: avg("recommendationLikelihood"), averageEvidenceEntailment: avg("evidenceEntailment"), averageDistinctness: avg("distinctness"), averageNaturalness: avg("naturalness") };
+  };
+  return { provider: stored.provider, retrieval: { total: retrievalCorpus.cases.length, twiceJudged: retrieval.length, agreement: totalLabels ? matchingLabels / totalLabels : 0, poolRecordRecallAt12: relevant ? hit / relevant : 0, uniqueClaimRecallAt12: uniqueRelevant ? uniqueHit / uniqueRelevant : 0, precisionAt12: retrieved ? relevantRetrieved / retrieved : 0, flaggedForHuman: retrievalRisk.sort((a,b)=>b.risk-a.risk||a.id.localeCompare(b.id)).slice(0,15).map(item=>item.id) },
+    prompts: { total: promptCorpus.cases.length, twiceJudged: prompts.length, pipelineAccepted: aggregate(consensus.filter(item => item.decision === "accepted")), pipelineRejected: aggregate(consensus.filter(item => item.decision === "rejected")), flaggedForHuman: promptRisk.sort((a,b)=>b.risk-a.risk||a.id.localeCompare(b.id)).slice(0,20).map(item=>item.id) } };
 }
 
 const RETRIEVAL_INSTRUCTIONS = `You are an independent retrieval evaluator. For every case, classify every supplied evidence item against the query: relevant means directly answers or materially supports the query; partial means useful but incomplete; irrelevant means topical overlap without material support; forbidden means contradictory, unsafe, inaccessible, stale, or inappropriate to use. Do not reward keyword overlap. missingEvidenceLikely is true only when the supplied pool appears unable to support an important part of the query. Return every case and every evidence ID exactly once. Confidence reflects confidence in the case-level judgment.`;
@@ -160,3 +210,4 @@ const promptJsonSchema = {
 async function loadCorpus(file: string): Promise<Corpus> { return JSON.parse(await readFile(file, "utf8")) as Corpus; }
 async function loadJudge(file: string, provider: string): Promise<JudgeFile> { try { const parsed = JSON.parse(await readFile(file, "utf8")) as JudgeFile; return parsed.provider === provider ? parsed : { schemaVersion: 1, provider, updatedAt: new Date().toISOString(), retrieval: {}, prompts: {} }; } catch (error) { if (error instanceof Error && "code" in error && error.code === "ENOENT") return { schemaVersion: 1, provider, updatedAt: new Date().toISOString(), retrieval: {}, prompts: {} }; throw error; } }
 async function saveJudge(file: string, value: JudgeFile): Promise<void> { value.updatedAt = new Date().toISOString(); const temporary = `${file}.tmp`; await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, "utf8"); await rename(temporary, file); }
+async function atomicCorpus(file: string, value: Corpus): Promise<void> { const temporary = `${file}.tmp`; await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, "utf8"); await rename(temporary, file); }

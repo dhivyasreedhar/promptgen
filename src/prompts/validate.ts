@@ -1,11 +1,11 @@
 import type { CompanyConfig, EvidenceRecord, Opportunity, PromptCandidate, ValidatedCandidate, ValidationFinding } from "../types.js";
 import { normalizeText, tokenize } from "../util.js";
 import { isEvidenceEligible } from "../context/policy.js";
-import { classifyBuyerIntent, evidenceBuyerIntent, isBuyingIntent } from "../context/intent.js";
+import { classifyBuyerIntent, isBuyingIntent, isBuyingSignal } from "../context/intent.js";
 
 const SECRET = /(?:sk-[a-z0-9_-]{12,}|api[_ -]?key|bearer\s+[a-z0-9._-]{12,}|password\s*[:=]|[\w.+-]+@[\w.-]+\.[a-z]{2,})/i;
 const NAMED_CONSTRAINTS = ["soc 2", "hipaa", "gdpr", "fedramp", "iso 27001", "on-prem", "self-hosted", "gitlab", "github", "jira", "slack"];
-const SOLUTION_CUE = /\b(tools?|platforms?|software|solutions?|services?|vendors?|providers?|products?|systems?|apps?|alternatives?|replace|switch(?:ing)? to|what should (?:we|i) (?:use|choose|consider)|recommend)\b/i;
+const SOLUTION_CUE = /\b(tools?|platforms?|software|solutions?|services?|vendors?|providers?|products?|systems?|apps?|apis?|infrastructure|agents?|reviewers?|alternatives?|replace|switch(?:ing)? to|what should (?:we|i) (?:use|choose|consider)|recommend)\b/i;
 const INFORMATIONAL_FRAMING = /^(?:how important is|why is|what is the importance of|what are the benefits of)\b/i;
 
 export function validateCandidates(
@@ -31,12 +31,12 @@ export function validateCandidates(
       ? "A public-inference candidate needs at least one public evidence record."
       : "Candidate needs at least two evidence records."));
     if (records.some(item => !isEvidenceEligible(item))) findings.push(fatal("ineligible-evidence", "Candidate cites expired, restricted, deprecated, planned, or non-exposable evidence."));
-    if (!validPublicInference && !records.some(item => item.kind === "demand" || item.kind === "language")) findings.push(fatal("missing-demand", "No demand evidence supports this prompt."));
+    if (!validPublicInference && !records.some(item => ["demand", "language", "constraint", "comparison"].includes(item.kind))) findings.push(fatal("missing-demand", "No buyer-demand evidence supports this prompt."));
     if (!isBuyingIntent(candidateIntent)) findings.push(fatal("not-buying-intent", `Prompt is ${candidateIntent} intent rather than a discovery, evaluation, or purchase situation.`));
     if (INFORMATIONAL_FRAMING.test(text) || !SOLUTION_CUE.test(text)) {
       findings.push(fatal("not-recommendation-seeking", "Prompt is likely to produce advice or explanation rather than a product or vendor recommendation."));
     }
-    if (!validPublicInference && !records.some(item => (item.kind === "demand" || item.kind === "language") && isBuyingIntent(evidenceBuyerIntent(item)))) {
+    if (!validPublicInference && !records.some(isBuyingSignal)) {
       findings.push(fatal("missing-buying-demand", "Demand evidence is support, implementation, retention, or operational noise rather than buying intent."));
     }
     if (publicInference && !validPublicInference) findings.push(fatal("invalid-public-inference", "Public-only inference may cite only public evidence."));

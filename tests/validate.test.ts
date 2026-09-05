@@ -64,4 +64,10 @@ describe("validateCandidates", () => {
     const evidence = [baseEvidence({}), baseEvidence({ id: "e2", source: "web", visibility: "public", safeUse: "public", kind: "capability", claim: "Incident platforms support Slack status updates", quote: "Incident platforms support Slack status updates" })];
     expect(validate("Which incident platforms send status updates directly from Slack?", evidence).accepted).toBe(true);
   });
+
+  it("treats an evaluation-stage constraint as buyer-demand evidence", () => {
+    const evidence = [baseEvidence({ kind: "constraint", buyerIntent: "evaluation", claim: "Buyers evaluate incident platforms for complex escalation policies" }),
+      baseEvidence({ id: "e2", source: "web", visibility: "public", safeUse: "public", kind: "capability", claim: "Complex incident escalation policies are supported", quote: "Complex incident escalation policies" })];
+    expect(validate("Which incident platforms support complex escalation policies?", evidence).accepted).toBe(true);
+  });
 });
