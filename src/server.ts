@@ -208,7 +208,10 @@ async function route(config: AppConfig, fixtures: boolean, hosted: PostgresMetad
     const configured = config.companies.find(item => item.domain === domain || `www.${item.domain}` === domain || item.domain === domain.replace(/^www\./, ""));
     const company = configured ?? publicCompany(domain);
     using db = new EvidenceDatabase(config.dbPath);
-    const input = { id: randomUUID(), company, fixtures: Boolean(configured) && fixtures, createdAt: new Date().toISOString() };
+    // Configured demo companies deliberately ship with simulated private
+    // sources. Keep them enabled even if the process was started without the
+    // optional CLI flag; unknown domains remain public-only.
+    const input = { id: randomUUID(), company, fixtures: Boolean(configured) || fixtures, createdAt: new Date().toISOString() };
     const job = hosted ? await hosted.enqueueJob(input) : db.enqueueJob(input);
     void processJobs(config, hosted);
     json(response, 202, { jobId: job.id, companyId: job.companyId, status: job.status }); return;
