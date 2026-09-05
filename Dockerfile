@@ -7,6 +7,7 @@ COPY src ./src
 COPY scripts ./scripts
 COPY tests ./tests
 COPY config ./config
+COPY fixtures/benchmark ./fixtures/benchmark
 RUN npm run build && npm test
 
 FROM node:24-bookworm-slim AS runtime
