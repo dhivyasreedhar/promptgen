@@ -3,6 +3,7 @@ import { companyById, loadConfig } from "./config.js";
 import { evaluateRetrieval } from "./eval.js";
 import { evaluateIndependentBenchmark } from "./eval-benchmark.js";
 import { evaluateHumanAnnotations, prepareHumanEvaluation } from "./eval-human.js";
+import { readOpenAiJudgeReport, runOpenAiJudge } from "./eval-llm-judge.js";
 import { runCompany } from "./pipeline/run.js";
 import { scheduler } from "./scheduler.js";
 import { serve } from "./server.js";
@@ -54,6 +55,12 @@ switch (command) {
     process.exitCode = report.passed ? 0 : 1;
     break;
   }
+  case "eval-judge":
+    process.stdout.write(`${JSON.stringify(await runOpenAiJudge(config), null, 2)}\n`);
+    break;
+  case "eval-judge-report":
+    process.stdout.write(`${JSON.stringify(await readOpenAiJudgeReport(config), null, 2)}\n`);
+    break;
   case "serve":
     await serve(config, fixtures);
     break;
@@ -105,6 +112,6 @@ switch (command) {
     break;
   }
   default:
-    process.stdout.write(["Manicule Promptgen V2", "", "Commands:", "  run <company> [--fixtures]", "  run-all [--fixtures]", "  scheduler [--fixtures]", "  serve [--fixtures]", "  eval (safety regression + human quality report)", "  eval-prepare", "  eval-human", "  eval-gate", "  postgres-migrate", "  postgres-health", "  postgres-search <company-id> <query>", "  postgres-embed <company-id> [limit]", ""].join("\n"));
+    process.stdout.write(["Manicule Promptgen V2", "", "Commands:", "  run <company> [--fixtures]", "  run-all [--fixtures]", "  scheduler [--fixtures]", "  serve [--fixtures]", "  eval (safety regression + human quality report)", "  eval-prepare", "  eval-human", "  eval-gate", "  eval-judge", "  eval-judge-report", "  postgres-migrate", "  postgres-health", "  postgres-search <company-id> <query>", "  postgres-embed <company-id> [limit]", ""].join("\n"));
     if (command !== "help") process.exitCode = 1;
 }

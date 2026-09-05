@@ -23,8 +23,19 @@
         "not-buying-intent",
         "single-source"
       ],
-      "status": "pending",
-      "grades": []
+      "status": "reviewed",
+      "grades": [
+        {
+          "reviewerId": "dhivya",
+          "reviewedAt": "2026-09-05T17:24:53.235Z",
+          "buyerIntent": 5,
+          "recommendationLikelihood": 5,
+          "evidenceEntailment": 4,
+          "distinctness": 4,
+          "naturalness": 5,
+          "accept": true
+        }
+      ]
     },
     {
       "id": "greptile:03081bd7ac52e5264db5d5f4",

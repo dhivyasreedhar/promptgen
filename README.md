@@ -65,6 +65,8 @@ npm run eval:human
 npm run eval:annotate -- retrieval reviewer-a --limit=25
 npm run eval:annotate -- prompts reviewer-a --limit=25
 npm run eval:gate
+npm run eval:judge
+npm run eval:judge:report
 npx tsx src/cli.ts scheduler --fixtures
 npm run serve
 ```
@@ -101,6 +103,8 @@ By default, the fixture generator creates 20,300 artifacts per company—81,200 
 `npm run eval` reports three deliberately separate layers. Fixture coverage checks generator consistency. The five-case hand-authored corpus in `fixtures/benchmark/retrieval.json` is an adversarial safety regression for roadmap-versus-shipped evidence, expired claims, ACL restrictions, `never-expose`, noise, and vocabulary expansion. It is not presented as evidence of production retrieval quality. The human-evaluation report reads a 150-case retrieval queue and a 200-prompt grading queue under `eval/annotations`; it remains failed until actual reviewers meet the documented coverage and quality thresholds.
 
 Run `npm run eval:prepare` after representative company runs to refresh the queues while preserving existing judgments by stable case ID. Reviewers use `npm run eval:annotate -- retrieval <reviewer-id>` and `npm run eval:annotate -- prompts <reviewer-id>`. `npm run eval:human` reports progress; `npm run eval:gate` is the non-zero release gate. The full labeling, overlap, and adjudication rules are in `eval/PROTOCOL.md`. Generated, fixture-derived, or model judgments are never counted as human labels.
+
+`npm run eval:judge` runs an independent OpenAI judge twice with reversed evidence order and checkpointed retries. Machine results remain separate from human annotations. `npm run eval:judge:report` uses the explicit term `poolRecallAt12`, because an LLM cannot prove that relevant evidence absent from its candidate pool does not exist, and selects a small priority human audit.
 
 Real private connectors implement the same `Connector` interface and must emit `SourceArtifact` values with genuine `private` visibility. Fixture provenance is validated and cannot be mistaken for connected customer data.
 

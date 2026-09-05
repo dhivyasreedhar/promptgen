@@ -59,3 +59,7 @@ All 200 prompts must be graded. At least 20% should be independently graded by a
 - Mean evidence entailment ≥ 4.0
 
 `npm run eval:human` always prints the current report without enforcing the exit code. Never describe pending, model-generated, or fixture-derived labels as human judgments.
+
+## Independent LLM judge
+
+`npm run eval:judge` uses the configured OpenAI judge model for two independent passes, reversing evidence order in the second pass to expose position sensitivity. Machine judgments live in `openai-judgments.json` and never populate the human `judgments` or `grades` arrays. `npm run eval:judge:report` reports machine-only results and selects a priority human calibration sample of 15 retrieval cases and 20 prompts. Candidate-pool recall is named `poolRecallAt12`; only human discovery of missed evidence can support a stronger recall claim.
