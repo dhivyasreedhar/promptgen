@@ -47,16 +47,22 @@ export class PublicWebConnector implements Connector {
   private async discover(origin: string, domain: string, signal: AbortSignal): Promise<string[]> {
     const candidates = new Set<string>(CORE_PATHS.map(pathname => new URL(pathname, origin).href));
     for (const sitemapPath of ["/sitemap.xml", "/sitemap_index.xml"]) {
-      const response = await safeFetch(`${origin}${sitemapPath}`, domain, this.timeoutMs, signal).catch(() => undefined);
-      if (!response?.ok) continue;
-      const xml = await response.text();
-      for (const match of xml.matchAll(/<loc>\s*(https?:\/\/[^<]+)\s*<\/loc>/gi)) {
-        const value = match[1]?.replaceAll("&amp;", "&");
-        if (!value) continue;
-        try {
-          const url = new URL(value);
-          if (isAllowedHost(url, domain) && !/\.(xml|jpg|jpeg|png|gif|svg|pdf)$/i.test(url.pathname)) candidates.add(url.href);
-        } catch { /* malformed sitemap entry */ }
+      try {
+        const response = await safeFetch(`${origin}${sitemapPath}`, domain, this.timeoutMs, signal);
+        if (!response.ok) continue;
+        const xml = await response.text();
+        for (const match of xml.matchAll(/<loc>\s*(https?:\/\/[^<]+)\s*<\/loc>/gi)) {
+          const value = match[1]?.replaceAll("&amp;", "&");
+          if (!value) continue;
+          try {
+            const url = new URL(value);
+            if (isAllowedHost(url, domain) && !/\.(xml|jpg|jpeg|png|gif|svg|pdf)$/i.test(url.pathname)) candidates.add(url.href);
+          } catch { /* malformed sitemap entry */ }
+        }
+      } catch {
+        // Sitemaps are optional discovery hints. A bad sitemap must not block
+        // the deterministic core product pages from being collected.
+        continue;
       }
     }
     return rankPublicUrls([...candidates]);

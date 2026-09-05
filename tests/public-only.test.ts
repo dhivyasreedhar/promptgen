@@ -103,4 +103,34 @@ describe("public-only prompt path", () => {
     expect(artifacts).toHaveLength(1);
     expect(artifacts[0]?.url).toBe("https://public.co/");
   });
+
+  it("falls back to core pages when a sitemap body fails", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL) => {
+      const url = String(input);
+      if (url.endsWith("/sitemap.xml")) {
+        return {
+          ok: true, status: 200, url,
+          headers: new Headers({ "content-type": "application/xml" }),
+          text: async () => { throw new Error("terminated sitemap body"); },
+        } as unknown as Response;
+      }
+      if (url.endsWith("/sitemap_index.xml")) return new Response("missing", { status: 404 });
+      if (url === "https://public.co/") {
+        return {
+          ok: true, status: 200, url,
+          headers: new Headers({ "content-type": "text/html" }),
+          text: async () => `<html><title>Public Co</title><body>${"Product analytics and session replay are available. ".repeat(4)}</body></html>`,
+        } as unknown as Response;
+      }
+      return new Response("missing", { status: 404 });
+    }));
+
+    const artifacts = [];
+    for await (const artifact of new PublicWebConnector(8, 1_000).collect(company, new AbortController().signal)) {
+      artifacts.push(artifact);
+    }
+
+    expect(artifacts).toHaveLength(1);
+    expect(artifacts[0]?.url).toBe("https://public.co/");
+  });
 });
