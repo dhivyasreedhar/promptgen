@@ -23,6 +23,8 @@ services:
         value: 1
       - key: PROMPTGEN_PUBLIC_WEB
         value: true
+      - key: PROMPTGEN_ALLOW_PUBLIC_ACCESS
+        value: true
       - key: PROMPTGEN_MODEL_PROVIDER
         value: anthropic
       - key: PROMPTGEN_EMBEDDING_PROVIDER
@@ -35,8 +37,6 @@ services:
         value: America/Los_Angeles
       - key: PROMPTGEN_TENANT_NAME
         value: Manicule promptgen demo
-      - key: PROMPTGEN_ACCESS_PASSWORD
-        sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: DATABASE_URL

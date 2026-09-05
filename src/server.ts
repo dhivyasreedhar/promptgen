@@ -17,8 +17,8 @@ let processing = false;
 let scheduling = false;
 
 export async function serve(config: AppConfig, fixtures: boolean): Promise<void> {
-  if (!isLoopback(config.host) && !config.accessPassword) {
-    throw new Error("PROMPTGEN_ACCESS_PASSWORD is required when serving on a non-loopback host");
+  if (!isExternalServingAllowed(config.host, config.accessPassword, config.allowPublicAccess)) {
+    throw new Error("Set PROMPTGEN_ACCESS_PASSWORD or explicitly enable PROMPTGEN_ALLOW_PUBLIC_ACCESS when serving on a non-loopback host");
   }
   const hosted = config.postgresUrl ? new PostgresMetadataStore(config.postgresUrl, config.tenantId, config.tenantName) : undefined;
   const server = createServer(async (request, response) => {
@@ -63,7 +63,12 @@ export async function serve(config: AppConfig, fixtures: boolean): Promise<void>
   };
   process.once("SIGINT", () => void shutdown());
   process.once("SIGTERM", () => void shutdown());
-  log("info", "server.started", { url: `http://${config.host}:${config.port}`, fixtures, schedulerEnabled: config.schedulerEnabled, authentication: config.accessPassword ? "required" : "disabled" });
+  log("info", "server.started", { url: `http://${config.host}:${config.port}`, fixtures, schedulerEnabled: config.schedulerEnabled,
+    access: config.accessPassword ? "password-protected" : config.allowPublicAccess ? "public" : "loopback-only" });
+}
+
+export function isExternalServingAllowed(host: string, accessPassword: string | undefined, allowPublicAccess: boolean): boolean {
+  return isLoopback(host) || Boolean(accessPassword) || allowPublicAccess;
 }
 
 export function isAuthorizationValid(header: string | undefined, expectedPassword: string): boolean {

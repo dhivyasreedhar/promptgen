@@ -25,6 +25,7 @@ const envSchema = z.object({
   PROMPTGEN_HOST: z.string().min(1).default("127.0.0.1"),
   PROMPTGEN_PORT: z.coerce.number().int().min(1024).max(65_535).optional(),
   PORT: z.coerce.number().int().min(1024).max(65_535).optional(),
+  PROMPTGEN_ALLOW_PUBLIC_ACCESS: z.enum(["true", "false"]).default("false"),
   PROMPTGEN_ACCESS_PASSWORD: z.string().min(12).optional(),
   PROMPTGEN_SCHEDULER_ENABLED: z.enum(["true", "false"]).default("false"),
   PROMPTGEN_MODEL_PROVIDER: z.enum(["auto", "anthropic", "openai", "local"]).default("auto"),
@@ -65,6 +66,7 @@ export interface AppConfig {
   timezone: string;
   host: string;
   port: number;
+  allowPublicAccess: boolean;
   accessPassword?: string;
   schedulerEnabled: boolean;
   modelProvider: "auto" | "anthropic" | "openai" | "local";
@@ -106,6 +108,7 @@ export async function loadConfig(rootDir = process.cwd()): Promise<AppConfig> {
     timezone: parsed.PROMPTGEN_TIMEZONE,
     host: parsed.PROMPTGEN_HOST,
     port: parsed.PROMPTGEN_PORT ?? parsed.PORT ?? 4317,
+    allowPublicAccess: parsed.PROMPTGEN_ALLOW_PUBLIC_ACCESS === "true",
     ...(parsed.PROMPTGEN_ACCESS_PASSWORD ? { accessPassword: parsed.PROMPTGEN_ACCESS_PASSWORD } : {}),
     schedulerEnabled: parsed.PROMPTGEN_SCHEDULER_ENABLED === "true",
     modelProvider: parsed.PROMPTGEN_MODEL_PROVIDER,
