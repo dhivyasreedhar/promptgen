@@ -1,0 +1,86 @@
+[
+  {
+    "topic": "slack-incidents",
+    "problem": "incident coordination is fragmented across Slack messages",
+    "capability": "Slack-native incident workflows",
+    "segment": "SRE teams",
+    "constraint": "distributed responders"
+  },
+  {
+    "topic": "on-call",
+    "problem": "teams need to coordinate on-call response and escalation",
+    "capability": "on-call and incident orchestration",
+    "segment": "platform teams",
+    "constraint": "complex escalation policies"
+  },
+  {
+    "topic": "postmortems",
+    "problem": "postmortems take too long and miss incident context",
+    "capability": "automated postmortem timelines",
+    "segment": "reliability teams",
+    "constraint": "audit-ready reviews"
+  },
+  {
+    "topic": "runbooks",
+    "problem": "responders cannot find the right runbook under pressure",
+    "capability": "contextual incident runbooks",
+    "segment": "operations teams",
+    "constraint": "time-critical response"
+  },
+  {
+    "topic": "status-pages",
+    "problem": "customer communications lag behind incident response",
+    "capability": "incident-linked status updates",
+    "segment": "customer-facing SaaS teams",
+    "constraint": "multiple audiences"
+  },
+  {
+    "topic": "pagerduty-migration",
+    "problem": "teams want incident management beyond paging",
+    "capability": "integrated incident lifecycle management",
+    "segment": "PagerDuty users",
+    "constraint": "migration without response disruption"
+  },
+  {
+    "topic": "automation",
+    "problem": "manual incident administration distracts responders",
+    "capability": "automated incident workflows",
+    "segment": "lean SRE teams",
+    "constraint": "repetitive coordination work"
+  },
+  {
+    "topic": "multi-team",
+    "problem": "cross-team incidents have unclear ownership",
+    "capability": "roles and multi-team coordination",
+    "segment": "large organizations",
+    "constraint": "many dependent services"
+  },
+  {
+    "topic": "metrics",
+    "problem": "leaders cannot measure incident process effectiveness",
+    "capability": "incident analytics and reporting",
+    "segment": "engineering leadership",
+    "constraint": "MTTR and process metrics"
+  },
+  {
+    "topic": "security-incidents",
+    "problem": "security incidents need controlled collaboration",
+    "capability": "permissioned incident workflows",
+    "segment": "security operations teams",
+    "constraint": "sensitive incidents"
+  },
+  {
+    "topic": "jira-sync",
+    "problem": "incident follow-up work gets lost after resolution",
+    "capability": "ticket and follow-up synchronization",
+    "segment": "engineering teams",
+    "constraint": "Jira-based workflows"
+  },
+  {
+    "topic": "ai-summaries",
+    "problem": "responders waste time summarizing long incident threads",
+    "capability": "AI-assisted incident summaries",
+    "segment": "incident commanders",
+    "constraint": "high-message-volume incidents"
+  }
+]

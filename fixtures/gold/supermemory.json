@@ -1,0 +1,86 @@
+[
+  {
+    "topic": "cross-session",
+    "problem": "AI assistants forget users between sessions",
+    "capability": "persistent cross-session memory",
+    "segment": "AI product teams",
+    "constraint": "long-lived users"
+  },
+  {
+    "topic": "user-profiles",
+    "problem": "applications repeatedly reconstruct user preferences",
+    "capability": "automatically maintained user memory",
+    "segment": "consumer AI teams",
+    "constraint": "personalized experiences"
+  },
+  {
+    "topic": "memory-retrieval",
+    "problem": "agents retrieve irrelevant old memories",
+    "capability": "relevance-ranked memory retrieval",
+    "segment": "agent developers",
+    "constraint": "large memory histories"
+  },
+  {
+    "topic": "memory-api",
+    "problem": "teams do not want to build memory infrastructure",
+    "capability": "managed memory API",
+    "segment": "startup engineering teams",
+    "constraint": "fast integration"
+  },
+  {
+    "topic": "multi-agent",
+    "problem": "multiple agents need access to shared user context",
+    "capability": "shared application memory",
+    "segment": "multi-agent platform teams",
+    "constraint": "agent attribution"
+  },
+  {
+    "topic": "deduplication",
+    "problem": "repeated conversations create duplicate memories",
+    "capability": "memory consolidation",
+    "segment": "assistant developers",
+    "constraint": "high conversation volume"
+  },
+  {
+    "topic": "forgetting",
+    "problem": "stale memories make agents behave incorrectly",
+    "capability": "memory update and forgetting controls",
+    "segment": "AI product teams",
+    "constraint": "changing preferences"
+  },
+  {
+    "topic": "latency",
+    "problem": "memory retrieval adds noticeable response latency",
+    "capability": "low-latency memory search",
+    "segment": "real-time AI applications",
+    "constraint": "interactive response times"
+  },
+  {
+    "topic": "multimodal",
+    "problem": "user context exists across links, documents and media",
+    "capability": "multimodal memory ingestion",
+    "segment": "knowledge assistant teams",
+    "constraint": "mixed content types"
+  },
+  {
+    "topic": "privacy",
+    "problem": "personal memories need deletion and privacy controls",
+    "capability": "memory management APIs",
+    "segment": "privacy-conscious applications",
+    "constraint": "user deletion requests"
+  },
+  {
+    "topic": "frameworks",
+    "problem": "memory integration differs across agent frameworks",
+    "capability": "framework-agnostic memory integration",
+    "segment": "AI infrastructure teams",
+    "constraint": "multiple SDKs"
+  },
+  {
+    "topic": "observability",
+    "problem": "developers cannot tell why a memory was recalled",
+    "capability": "memory retrieval metadata",
+    "segment": "agent platform teams",
+    "constraint": "debugging production agents"
+  }
+]

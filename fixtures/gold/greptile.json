@@ -1,0 +1,86 @@
+[
+  {
+    "topic": "large-repositories",
+    "problem": "AI code reviews lose context in very large repositories",
+    "capability": "repository-wide codebase context",
+    "segment": "platform engineering teams",
+    "constraint": "large monorepos"
+  },
+  {
+    "topic": "review-noise",
+    "problem": "automated reviews create too many low-value comments",
+    "capability": "high-signal contextual review comments",
+    "segment": "software teams",
+    "constraint": "low false-positive rate"
+  },
+  {
+    "topic": "custom-rules",
+    "problem": "teams need reviews to enforce internal engineering standards",
+    "capability": "custom review rules",
+    "segment": "regulated engineering teams",
+    "constraint": "organization-specific policies"
+  },
+  {
+    "topic": "gitlab",
+    "problem": "teams need AI review outside GitHub",
+    "capability": "GitLab code review integration",
+    "segment": "enterprise engineering teams",
+    "constraint": "GitLab-hosted repositories"
+  },
+  {
+    "topic": "security",
+    "problem": "security bugs escape ordinary pull-request review",
+    "capability": "security-aware code analysis",
+    "segment": "application security teams",
+    "constraint": "security-sensitive changes"
+  },
+  {
+    "topic": "on-prem",
+    "problem": "source code cannot leave company-controlled infrastructure",
+    "capability": "self-hosted deployment options",
+    "segment": "security-conscious enterprises",
+    "constraint": "private code"
+  },
+  {
+    "topic": "review-speed",
+    "problem": "human reviewers are a release bottleneck",
+    "capability": "automated pull-request review",
+    "segment": "high-velocity teams",
+    "constraint": "fast feedback"
+  },
+  {
+    "topic": "stacked-prs",
+    "problem": "dependent pull requests are difficult to review in isolation",
+    "capability": "cross-change context",
+    "segment": "large engineering organizations",
+    "constraint": "stacked changes"
+  },
+  {
+    "topic": "legacy-code",
+    "problem": "engineers struggle to understand unfamiliar legacy code",
+    "capability": "codebase-aware explanations",
+    "segment": "modernization teams",
+    "constraint": "poorly documented systems"
+  },
+  {
+    "topic": "developer-adoption",
+    "problem": "developers ignore generic bot comments",
+    "capability": "contextual actionable suggestions",
+    "segment": "engineering leaders",
+    "constraint": "developer trust"
+  },
+  {
+    "topic": "compliance",
+    "problem": "review evidence is difficult to audit",
+    "capability": "review activity records",
+    "segment": "regulated companies",
+    "constraint": "auditability"
+  },
+  {
+    "topic": "multi-language",
+    "problem": "review quality varies across programming languages",
+    "capability": "multi-language code analysis",
+    "segment": "polyglot teams",
+    "constraint": "mixed-language repositories"
+  }
+]

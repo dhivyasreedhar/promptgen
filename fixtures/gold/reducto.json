@@ -1,0 +1,86 @@
+[
+  {
+    "topic": "complex-pdfs",
+    "problem": "standard parsers fail on complex PDF layouts",
+    "capability": "layout-aware document parsing",
+    "segment": "AI application teams",
+    "constraint": "multi-column documents"
+  },
+  {
+    "topic": "tables",
+    "problem": "tables lose structure during document extraction",
+    "capability": "structured table extraction",
+    "segment": "financial data teams",
+    "constraint": "merged cells and nested headers"
+  },
+  {
+    "topic": "scanned-docs",
+    "problem": "scanned documents produce poor OCR results",
+    "capability": "OCR for scanned documents",
+    "segment": "document operations teams",
+    "constraint": "low-quality scans"
+  },
+  {
+    "topic": "handwriting",
+    "problem": "handwritten fields are difficult to extract reliably",
+    "capability": "handwriting-aware extraction",
+    "segment": "insurance operations",
+    "constraint": "mixed printed and handwritten forms"
+  },
+  {
+    "topic": "rag-ingestion",
+    "problem": "document chunks lose layout and citation context in RAG",
+    "capability": "document ingestion with grounded coordinates",
+    "segment": "RAG engineering teams",
+    "constraint": "citation-sensitive answers"
+  },
+  {
+    "topic": "schema-output",
+    "problem": "teams need documents normalized into application schemas",
+    "capability": "schema-based structured extraction",
+    "segment": "automation teams",
+    "constraint": "variable source layouts"
+  },
+  {
+    "topic": "batch-scale",
+    "problem": "large document backlogs are slow to process",
+    "capability": "batch document processing",
+    "segment": "enterprise data teams",
+    "constraint": "high-volume ingestion"
+  },
+  {
+    "topic": "financial-docs",
+    "problem": "financial reports contain dense tables and footnotes",
+    "capability": "financial document parsing",
+    "segment": "financial analysts",
+    "constraint": "long filings"
+  },
+  {
+    "topic": "forms",
+    "problem": "checkboxes and form fields are lost by basic OCR",
+    "capability": "form-aware extraction",
+    "segment": "operations teams",
+    "constraint": "complex forms"
+  },
+  {
+    "topic": "api-reliability",
+    "problem": "document pipelines need predictable retries and status",
+    "capability": "asynchronous parsing API",
+    "segment": "platform engineers",
+    "constraint": "production workloads"
+  },
+  {
+    "topic": "image-docs",
+    "problem": "documents mix text with charts and images",
+    "capability": "multimodal document understanding",
+    "segment": "research teams",
+    "constraint": "chart-heavy reports"
+  },
+  {
+    "topic": "data-residency",
+    "problem": "sensitive documents require controlled processing",
+    "capability": "enterprise deployment controls",
+    "segment": "regulated enterprises",
+    "constraint": "confidential documents"
+  }
+]

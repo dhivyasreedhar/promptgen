@@ -1,0 +1,34 @@
+[
+  {
+    "id": "greptile",
+    "name": "Greptile",
+    "domain": "greptile.com",
+    "category": "AI code review platform",
+    "githubOrganizations": ["greptileai"],
+    "enabledSources": ["web", "github", "gsc", "slack", "intercom", "linear", "crm", "calls", "mintlify"]
+  },
+  {
+    "id": "rootly",
+    "name": "Rootly",
+    "domain": "rootly.com",
+    "category": "incident management platform",
+    "githubOrganizations": ["rootlyhq"],
+    "enabledSources": ["web", "github", "gsc", "slack", "intercom", "linear", "crm", "calls", "mintlify"]
+  },
+  {
+    "id": "reducto",
+    "name": "Reducto",
+    "domain": "reducto.ai",
+    "category": "document intelligence and extraction platform",
+    "githubOrganizations": ["reductoai"],
+    "enabledSources": ["web", "github", "gsc", "slack", "intercom", "linear", "crm", "calls", "mintlify"]
+  },
+  {
+    "id": "supermemory",
+    "name": "Supermemory",
+    "domain": "supermemory.ai",
+    "category": "memory infrastructure for AI applications",
+    "githubOrganizations": ["supermemoryai"],
+    "enabledSources": ["web", "github", "gsc", "slack", "intercom", "linear", "crm", "calls", "mintlify"]
+  }
+]

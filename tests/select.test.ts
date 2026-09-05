@@ -1,0 +1,68 @@
+import { describe, expect, it } from "vitest";
+import { selectPrompts } from "../src/prompts/select.js";
+import type { ValidatedCandidate } from "../src/types.js";
+
+function candidate(index: number, archetype: ValidatedCandidate["archetype"] = "category"): ValidatedCandidate {
+  const situations = ["large repositories", "custom policies", "security findings", "review latency", "legacy migrations", "audit records", "polyglot projects", "developer adoption", "stacked changes", "private deployment", "billing controls", "release planning", "mobile applications", "data residency"];
+  return { id: `c${index}`, opportunityId: `o${index}`, text: `Which platform supports ${situations[index % situations.length]} for engineering organizations?`, archetype,
+    evidenceIds: [`e${index}`, `e${index}-b`], version: 1, accepted: true, score: 0.9 - index / 100, findings: [] };
+}
+
+describe("selectPrompts", () => {
+  it("returns exactly ten discovery prompts and keeps boundaries separate", () => {
+    const result = selectPrompts([...Array.from({ length: 14 }, (_, i) => candidate(i)), candidate(99, "boundary")]);
+    expect(result.discovery).toHaveLength(10);
+    expect(result.discovery.every(item => item.archetype !== "boundary")).toBe(true);
+    expect(result.boundaries).toHaveLength(1);
+  });
+
+  it("does not fabricate when the pool is short", () => {
+    expect(selectPrompts(Array.from({ length: 7 }, (_, i) => candidate(i))).discovery).toHaveLength(7);
+  });
+
+  it("rejects semantically duplicate candidates supported by overlapping evidence", () => {
+    const first = { ...candidate(0), text: "What is the best GitLab code review integration for an engineering team?", evidenceIds: ["shared", "a"] };
+    const duplicate = { ...candidate(1), text: "Which AI review tools integrate with GitLab repositories?", evidenceIds: ["shared", "b"] };
+    const result = selectPrompts([first, duplicate, ...Array.from({ length: 10 }, (_, i) => candidate(i + 2))]);
+    expect(result.discovery.filter(item => /gitlab/i.test(item.text))).toHaveLength(1);
+  });
+
+  it("does not spend two final slots on the same named integration facet", () => {
+    const first = { ...candidate(0), text: "Which code review tools integrate with GitLab repositories?", evidenceIds: ["a", "b"] };
+    const second = { ...candidate(1), text: "What is the best GitLab review workflow for enterprise teams?", evidenceIds: ["c", "d"] };
+    expect(selectPrompts([first, second]).discovery).toHaveLength(1);
+  });
+
+  it("deduplicates large repository and huge monorepo formulations", () => {
+    const first = { ...candidate(0), text: "Which review agents keep context across very large repositories?", semanticKey: "large-repo-context-retention" };
+    const duplicate = { ...candidate(1), text: "What review solution avoids losing context in huge monorepos?", semanticKey: "repository-wide-context-monorepo" };
+    const result = selectPrompts([first, duplicate]);
+    expect(result.discovery).toHaveLength(1);
+  });
+
+  it("selects at most one candidate from the same original opportunity", () => {
+    const first = { ...candidate(0), opportunityId: "shared-opportunity", semanticKey: "fast-review" };
+    const second = { ...candidate(1), opportunityId: "shared-opportunity", semanticKey: "stacked-pull-requests" };
+    expect(selectPrompts([first, second]).discovery).toHaveLength(1);
+  });
+
+  it("uses a second materially distinct archetype only when needed to reach the target", () => {
+    const first = { ...candidate(0), opportunityId: "shared", semanticKey: "security-comparison", archetype: "comparison" as const };
+    const second = { ...candidate(1), opportunityId: "shared", semanticKey: "security-workflow", archetype: "workflow" as const };
+    expect(selectPrompts([first, second], 2).discovery).toHaveLength(2);
+  });
+
+  it("gives approved or brand-losing prompts a bounded stability preference", () => {
+    expect(selectPrompts([candidate(0), candidate(1)], 1, new Set(["c1"])).discovery[0]?.id).toBe("c1");
+  });
+
+  it("collapses differently worded AI incident automation prompts", () => {
+    const first = { ...candidate(0), text: "Which incident platforms have built-in AI automation for coordination?", semanticKey: "ai-incident-coordination" };
+    const duplicate = { ...candidate(1), text: "What incident tools use artificial intelligence to automate response workflows?", semanticKey: "automated-response-with-ai" };
+    expect(selectPrompts([first, duplicate], 2).discovery).toHaveLength(1);
+  });
+
+  it("marks approved stable prompts as benchmark prompts", () => {
+    expect(selectPrompts([candidate(0)], 1, new Set(), new Set(["c0"])).discovery[0]?.set).toBe("benchmark");
+  });
+});

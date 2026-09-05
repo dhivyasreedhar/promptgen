@@ -1,0 +1,89 @@
+{
+  "company": {
+    "id": "benchmark-co",
+    "name": "Benchmark Co",
+    "domain": "benchmark.invalid",
+    "category": "developer infrastructure",
+    "githubOrganizations": [],
+    "enabledSources": ["web", "gsc", "slack", "linear", "intercom"]
+  },
+  "artifacts": [
+    {
+      "id": "demand-self-hosted", "source": "gsc", "visibility": "synthetic",
+      "content": "Search query: best private code review platform for regulated teams. Impressions: 318. Clicks: 7.",
+      "metadata": { "labels": ["self-hosted"], "aclScopes": ["company"] }
+    },
+    {
+      "id": "capability-onprem", "source": "web", "visibility": "public",
+      "content": "The platform currently supports self-hosted deployment for security-sensitive codebases.",
+      "metadata": { "labels": ["self-hosted"], "lifecycle": "confirmed" }
+    },
+    {
+      "id": "planned-onprem", "source": "linear", "visibility": "synthetic",
+      "content": "Planned: we will support air-gapped deployment in a future release.",
+      "metadata": { "labels": ["self-hosted"], "lifecycle": "planned", "aclScopes": ["company"] }
+    },
+    {
+      "id": "deprecated-onprem", "source": "web", "visibility": "public",
+      "content": "Deprecated: the legacy on-premise agent is no longer supported.",
+      "metadata": { "labels": ["self-hosted"], "lifecycle": "deprecated" }
+    },
+    {
+      "id": "demand-latency", "source": "intercom", "visibility": "synthetic",
+      "content": "Customers report that document ingestion is too slow for interactive applications and need faster results.",
+      "metadata": { "labels": ["latency"], "aclScopes": ["company"] }
+    },
+    {
+      "id": "capability-latency", "source": "web", "visibility": "public",
+      "content": "The API provides low-latency asynchronous document processing with retry-safe job identifiers.",
+      "metadata": { "labels": ["latency"], "lifecycle": "confirmed" }
+    },
+    {
+      "id": "restricted-security", "source": "slack", "visibility": "synthetic",
+      "content": "Customer said they need restricted security incident rooms. The product supports private incident channels.",
+      "metadata": { "labels": ["security-incidents"], "aclScopes": ["security-team"] }
+    },
+    {
+      "id": "secret-record", "source": "slack", "visibility": "synthetic",
+      "content": "Customer needs audit exports. Internal API key: sk-not-for-retrieval-123456789.",
+      "metadata": { "labels": ["audit"], "aclScopes": ["company"], "neverExpose": true }
+    },
+    {
+      "id": "expired-record", "source": "web", "visibility": "public",
+      "content": "The platform supports a legacy XML export workflow.",
+      "metadata": { "labels": ["xml-export"], "lifecycle": "confirmed", "validTo": "2025-01-01T00:00:00.000Z" }
+    },
+    {
+      "id": "noise-calendar", "source": "slack", "visibility": "synthetic",
+      "content": "Can someone move the weekly planning meeting and update the shared calendar invitation?",
+      "metadata": { "labels": ["operations"], "aclScopes": ["company"] }
+    }
+  ],
+  "cases": [
+    {
+      "id": "confirmed-not-roadmap", "query": "private self hosted code review regulated teams",
+      "kinds": ["demand", "capability", "change"], "expectedArtifactIds": ["demand-self-hosted", "capability-onprem"],
+      "forbiddenArtifactIds": ["planned-onprem", "deprecated-onprem"], "accessScopes": ["public", "company"]
+    },
+    {
+      "id": "expanded-latency-language", "query": "fast reliable document processing",
+      "kinds": ["demand", "capability", "constraint"], "expectedArtifactIds": ["demand-latency", "capability-latency"],
+      "forbiddenArtifactIds": ["noise-calendar"], "accessScopes": ["public", "company"]
+    },
+    {
+      "id": "acl-denial", "query": "restricted security incident private channels",
+      "kinds": ["demand", "capability", "language"], "expectedArtifactIds": [],
+      "forbiddenArtifactIds": ["restricted-security"], "accessScopes": ["public", "company"]
+    },
+    {
+      "id": "never-expose", "query": "audit export API key",
+      "kinds": ["demand", "capability", "constraint"], "expectedArtifactIds": [],
+      "forbiddenArtifactIds": ["secret-record"], "accessScopes": ["public", "company"]
+    },
+    {
+      "id": "expired-truth", "query": "legacy XML export workflow",
+      "kinds": ["capability", "change"], "expectedArtifactIds": [],
+      "forbiddenArtifactIds": ["expired-record"], "accessScopes": ["public", "company"]
+    }
+  ]
+}

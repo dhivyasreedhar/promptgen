@@ -1,0 +1,8 @@
+node_modules/
+dist/
+data/*.db*
+runs*/
+.env
+coverage/
+fixtures/private/**/*.jsonl
+!fixtures/private/.gitkeep

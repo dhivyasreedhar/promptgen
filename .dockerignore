@@ -1,0 +1,8 @@
+node_modules
+dist
+data
+runs*
+fixtures/private
+.git
+.env
+coverage
