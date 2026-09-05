@@ -138,7 +138,7 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
       }
     }
     const embeddingProvider = config.embeddingProvider === "ollama"
-      ? new OllamaEmbeddingProvider(config.embeddingModel, config.embeddingDimensions, config.ollamaUrl)
+      ? new OllamaEmbeddingProvider(config.embeddingModel, config.embeddingDimensions, config.ollamaUrl, config.embeddingTimeoutMs)
       : undefined;
     if (metadata && embeddingProvider && config.embeddingRunLimit > 0 && !publicFastPath) {
       await backfillEmbeddings(metadata, company.id, embeddingProvider, config.embeddingRunLimit, trace, controller.signal);

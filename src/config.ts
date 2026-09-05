@@ -36,6 +36,9 @@ const envSchema = z.object({
   PROMPTGEN_EMBEDDING_PROVIDER: z.enum(["ollama", "disabled"]).default("ollama"),
   PROMPTGEN_EMBEDDING_MODEL: z.string().min(1).default("nomic-embed-text"),
   PROMPTGEN_EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().max(16_000).default(768),
+  // Embeddings are an optional retrieval enrichment. Keep the probe short so
+  // a deployment without Ollama never adds minutes to a prompt run.
+  PROMPTGEN_EMBEDDING_TIMEOUT_MS: z.coerce.number().int().min(500).max(120_000).default(5_000),
   PROMPTGEN_EMBEDDING_RUN_LIMIT: z.coerce.number().int().min(0).max(5_000).default(500),
   PROMPTGEN_OLLAMA_URL: z.string().url().default("http://127.0.0.1:11434"),
   ANTHROPIC_API_KEY: z.string().optional(),
@@ -77,6 +80,7 @@ export interface AppConfig {
   embeddingProvider: "ollama" | "disabled";
   embeddingModel: string;
   embeddingDimensions: number;
+  embeddingTimeoutMs: number;
   embeddingRunLimit: number;
   ollamaUrl: string;
   anthropicApiKey?: string;
@@ -119,6 +123,7 @@ export async function loadConfig(rootDir = process.cwd()): Promise<AppConfig> {
     embeddingProvider: parsed.PROMPTGEN_EMBEDDING_PROVIDER,
     embeddingModel: parsed.PROMPTGEN_EMBEDDING_MODEL,
     embeddingDimensions: parsed.PROMPTGEN_EMBEDDING_DIMENSIONS,
+    embeddingTimeoutMs: parsed.PROMPTGEN_EMBEDDING_TIMEOUT_MS,
     embeddingRunLimit: parsed.PROMPTGEN_EMBEDDING_RUN_LIMIT,
     ollamaUrl: parsed.PROMPTGEN_OLLAMA_URL,
     ...(parsed.ANTHROPIC_API_KEY ? { anthropicApiKey: parsed.ANTHROPIC_API_KEY } : {}),

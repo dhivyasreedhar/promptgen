@@ -84,7 +84,7 @@ switch (command) {
       import("./store/postgres-metadata.js"), import("./retrieval/embeddings.js")]);
     await using store = new PostgresMetadataStore(config.postgresUrl, config.tenantId, config.tenantName);
     const provider = config.embeddingProvider === "ollama"
-      ? new OllamaEmbeddingProvider(config.embeddingModel, config.embeddingDimensions, config.ollamaUrl)
+      ? new OllamaEmbeddingProvider(config.embeddingModel, config.embeddingDimensions, config.ollamaUrl, config.embeddingTimeoutMs)
       : undefined;
     const values = provider ? (await provider.embedQueries([flags.join(" ")]))[0] : undefined;
     const hits = await store.searchEvidence({ companyKey: target, query: flags.join(" "),
@@ -101,7 +101,7 @@ switch (command) {
     const [{ PostgresMetadataStore }, { OllamaEmbeddingProvider, embeddingInputHash }] = await Promise.all([
       import("./store/postgres-metadata.js"), import("./retrieval/embeddings.js")]);
     await using store = new PostgresMetadataStore(config.postgresUrl, config.tenantId, config.tenantName);
-    const provider = new OllamaEmbeddingProvider(config.embeddingModel, config.embeddingDimensions, config.ollamaUrl);
+    const provider = new OllamaEmbeddingProvider(config.embeddingModel, config.embeddingDimensions, config.ollamaUrl, config.embeddingTimeoutMs);
     const pending = await store.evidenceMissingEmbeddings(target, provider.provider, provider.model, limit);
     let completed = 0;
     for (let offset = 0; offset < pending.length; offset += 64) {
