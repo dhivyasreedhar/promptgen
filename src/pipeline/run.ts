@@ -12,7 +12,7 @@ import { repairCandidates } from "../prompts/repair.js";
 import { planEvidenceNeeds } from "../retrieval/planner.js";
 import { EvidenceRetriever, rankEvidenceCandidates } from "../retrieval/retriever.js";
 import { HostedEvidenceRetriever } from "../retrieval/hosted-retriever.js";
-import { embeddingInputHash, OllamaEmbeddingProvider, type EmbeddingProvider } from "../retrieval/embeddings.js";
+import { embeddingInputHash, OllamaEmbeddingProvider, OpenAIEmbeddingProvider, type EmbeddingProvider } from "../retrieval/embeddings.js";
 import { EvidenceDatabase } from "../store/database.js";
 import { PostgresMetadataStore } from "../store/postgres-metadata.js";
 import { artifactObjectKey, EncryptedFileObjectStore } from "../store/object-store.js";
@@ -137,7 +137,9 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
         trace.record("hosted-context", "relations-refreshed", relations);
       }
     }
-    const embeddingProvider = config.embeddingProvider === "ollama"
+    const embeddingProvider = config.embeddingProvider === "openai" && config.openaiApiKey
+      ? new OpenAIEmbeddingProvider(config.openaiApiKey, config.openaiEmbeddingModel, config.embeddingDimensions, config.embeddingTimeoutMs)
+      : config.embeddingProvider === "ollama"
       ? new OllamaEmbeddingProvider(config.embeddingModel, config.embeddingDimensions, config.ollamaUrl, config.embeddingTimeoutMs)
       : undefined;
     if (metadata && embeddingProvider && config.embeddingRunLimit > 0 && !publicFastPath) {

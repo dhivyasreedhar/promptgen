@@ -80,11 +80,13 @@ switch (command) {
   case "postgres-search": {
     if (!config.postgresUrl) throw new Error("DATABASE_URL is not configured");
     if (!target) throw new Error("Usage: postgres-search <company-id> <query>");
-    const [{ PostgresMetadataStore }, { OllamaEmbeddingProvider }] = await Promise.all([
+    const [{ PostgresMetadataStore }, embeddings] = await Promise.all([
       import("./store/postgres-metadata.js"), import("./retrieval/embeddings.js")]);
     await using store = new PostgresMetadataStore(config.postgresUrl, config.tenantId, config.tenantName);
-    const provider = config.embeddingProvider === "ollama"
-      ? new OllamaEmbeddingProvider(config.embeddingModel, config.embeddingDimensions, config.ollamaUrl, config.embeddingTimeoutMs)
+    const provider = config.embeddingProvider === "openai" && config.openaiApiKey
+      ? new embeddings.OpenAIEmbeddingProvider(config.openaiApiKey, config.openaiEmbeddingModel, config.embeddingDimensions, config.embeddingTimeoutMs)
+      : config.embeddingProvider === "ollama"
+      ? new embeddings.OllamaEmbeddingProvider(config.embeddingModel, config.embeddingDimensions, config.ollamaUrl, config.embeddingTimeoutMs)
       : undefined;
     const values = provider ? (await provider.embedQueries([flags.join(" ")]))[0] : undefined;
     const hits = await store.searchEvidence({ companyKey: target, query: flags.join(" "),
@@ -95,18 +97,20 @@ switch (command) {
   }
   case "postgres-embed": {
     if (!config.postgresUrl) throw new Error("DATABASE_URL is not configured");
-    if (config.embeddingProvider !== "ollama") throw new Error("Set PROMPTGEN_EMBEDDING_PROVIDER=ollama to create local embeddings");
+    if (config.embeddingProvider !== "ollama" && config.embeddingProvider !== "openai") throw new Error("Set PROMPTGEN_EMBEDDING_PROVIDER=openai or ollama to create embeddings");
     if (!target) throw new Error("Usage: postgres-embed <company-id> [limit]");
     const limit = Math.min(5_000, Math.max(1, Number(flags[0] ?? 500)));
-    const [{ PostgresMetadataStore }, { OllamaEmbeddingProvider, embeddingInputHash }] = await Promise.all([
+    const [{ PostgresMetadataStore }, embeddings] = await Promise.all([
       import("./store/postgres-metadata.js"), import("./retrieval/embeddings.js")]);
     await using store = new PostgresMetadataStore(config.postgresUrl, config.tenantId, config.tenantName);
-    const provider = new OllamaEmbeddingProvider(config.embeddingModel, config.embeddingDimensions, config.ollamaUrl, config.embeddingTimeoutMs);
+    const provider = config.embeddingProvider === "openai" && config.openaiApiKey
+      ? new embeddings.OpenAIEmbeddingProvider(config.openaiApiKey, config.openaiEmbeddingModel, config.embeddingDimensions, config.embeddingTimeoutMs)
+      : new embeddings.OllamaEmbeddingProvider(config.embeddingModel, config.embeddingDimensions, config.ollamaUrl, config.embeddingTimeoutMs);
     const pending = await store.evidenceMissingEmbeddings(target, provider.provider, provider.model, limit);
     let completed = 0;
     for (let offset = 0; offset < pending.length; offset += 64) {
       const batch = pending.slice(offset, offset + 64); const vectors = await provider.embedDocuments(batch.map(item => item.claim));
-      await store.writeEmbeddings(batch.map((item, index) => ({ id: item.id, embedding: vectors[index]!, inputHash: embeddingInputHash(item.claim) })),
+      await store.writeEmbeddings(batch.map((item, index) => ({ id: item.id, embedding: vectors[index]!, inputHash: embeddings.embeddingInputHash(item.claim) })),
         provider.provider, provider.model, provider.dimensions);
       completed += batch.length;
     }

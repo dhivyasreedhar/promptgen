@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import OpenAI from "openai";
 
 export interface StoredEmbedding {
   provider: string;
@@ -74,6 +75,23 @@ export class OllamaEmbeddingProvider implements EmbeddingProvider {
       }
       return value as number[];
     });
+  }
+}
+
+/** Hosted embeddings through OpenAI. The 768-dimensional projection matches
+ * the installed pgvector index while retaining the small model's semantics. */
+export class OpenAIEmbeddingProvider implements EmbeddingProvider {
+  readonly provider = "openai";
+  constructor(private readonly apiKey: string, readonly model = "text-embedding-3-small", readonly dimensions = 768, private readonly timeoutMs = 30_000) {}
+  private client(): OpenAI { return new OpenAI({ apiKey: this.apiKey, timeout: this.timeoutMs, maxRetries: 2 }); }
+  embedDocuments(texts: string[], signal?: AbortSignal): Promise<number[][]> { return this.embed(texts, signal); }
+  embedQueries(texts: string[], signal?: AbortSignal): Promise<number[][]> { return this.embed(texts, signal); }
+  private async embed(texts: string[], signal?: AbortSignal): Promise<number[][]> {
+    if (texts.length === 0) return [];
+    const response = await this.client().embeddings.create({ model: this.model, input: texts, dimensions: this.dimensions }, { signal });
+    const values = response.data.slice().sort((a, b) => a.index - b.index).map(item => item.embedding);
+    if (values.length !== texts.length || values.some(value => value.length !== this.dimensions || value.some(number => !Number.isFinite(number)))) throw new Error(`OpenAI returned invalid embedding dimensions; expected ${this.dimensions}`);
+    return values;
   }
 }
 

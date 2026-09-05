@@ -33,7 +33,7 @@ const envSchema = z.object({
   OPENAI_MODEL: z.string().default("gpt-5-mini"),
   OPENAI_JUDGE_MODEL: z.string().default("gpt-4.1-mini"),
   OPENAI_EMBEDDING_MODEL: z.string().default("text-embedding-3-small"),
-  PROMPTGEN_EMBEDDING_PROVIDER: z.enum(["ollama", "disabled"]).default("ollama"),
+  PROMPTGEN_EMBEDDING_PROVIDER: z.enum(["openai", "ollama", "disabled"]).default("openai"),
   PROMPTGEN_EMBEDDING_MODEL: z.string().min(1).default("nomic-embed-text"),
   PROMPTGEN_EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().max(16_000).default(768),
   // Embeddings are an optional retrieval enrichment. Keep the probe short so
@@ -77,7 +77,7 @@ export interface AppConfig {
   openaiModel: string;
   openaiJudgeModel: string;
   openaiEmbeddingModel: string;
-  embeddingProvider: "ollama" | "disabled";
+  embeddingProvider: "openai" | "ollama" | "disabled";
   embeddingModel: string;
   embeddingDimensions: number;
   embeddingTimeoutMs: number;
