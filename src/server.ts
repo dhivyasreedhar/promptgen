@@ -213,7 +213,7 @@ async function route(config: AppConfig, fixtures: boolean, hosted: PostgresMetad
     // Configured demo companies deliberately ship with simulated private
     // sources. Keep them enabled even if the process was started without the
     // optional CLI flag; unknown domains remain public-only.
-    const input = { id: randomUUID(), company, fixtures: Boolean(configured) || fixtures, createdAt: new Date().toISOString() };
+    const input = { id: randomUUID(), company, fixtures: useFixturesForDomain(configured), createdAt: new Date().toISOString() };
     const job = hosted ? await hosted.enqueueJob(input) : db.enqueueJob(input);
     void processJobs(config, hosted).catch(error => log("error", "job.worker-failed", { error: errorMessage(error) }));
     json(response, 202, { jobId: job.id, companyId: job.companyId, status: job.status }); return;
@@ -344,6 +344,10 @@ function publicCompany(domain: string): CompanyConfig {
     name: label.charAt(0).toUpperCase() + label.slice(1), domain: bare,
     category: "company or product", githubOrganizations: [], enabledSources: ["web"],
   };
+}
+
+export function useFixturesForDomain(configured: CompanyConfig | undefined): boolean {
+  return Boolean(configured);
 }
 
 async function presentRun(db: EvidenceDatabase, result: RunResult, hosted?: PostgresMetadataStore): Promise<RunResult & { evidence: Record<string, PresentedEvidence>; sourceHealth: ReturnType<EvidenceDatabase["sourceHealth"]> }> {

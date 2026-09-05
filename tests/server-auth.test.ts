@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isAuthorizationValid, isExternalServingAllowed } from "../src/server.js";
+import { isAuthorizationValid, isExternalServingAllowed, useFixturesForDomain } from "../src/server.js";
 
 describe("hosted demo authentication", () => {
   it("accepts any Basic username only when the password matches", () => {
@@ -13,5 +13,13 @@ describe("hosted demo authentication", () => {
     expect(isExternalServingAllowed("0.0.0.0", undefined, false)).toBe(false);
     expect(isExternalServingAllowed("0.0.0.0", "a-strong-demo-password", false)).toBe(true);
     expect(isExternalServingAllowed("0.0.0.0", undefined, true)).toBe(true);
+  });
+});
+
+describe("domain fixture routing", () => {
+  it("uses fixtures only for explicitly configured demo companies", () => {
+    expect(useFixturesForDomain(undefined)).toBe(false);
+    expect(useFixturesForDomain({ id: "demo", name: "Demo", domain: "demo.test", category: "developer tool",
+      githubOrganizations: [], enabledSources: ["web", "slack"] })).toBe(true);
   });
 });
