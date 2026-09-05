@@ -67,11 +67,42 @@ export interface ModelReview {
 
 export function createPromptModel(config: AppConfig): PromptModel {
   const selected = config.modelProvider;
-  if ((selected === "anthropic" || selected === "auto") && config.anthropicApiKey) return new AnthropicPromptModel(config.anthropicApiKey, config.anthropicModel, config.modelTimeoutMs);
-  if ((selected === "openai" || selected === "auto") && config.openaiApiKey) return new OpenAIPromptModel(config.openaiApiKey, config.openaiModel, config.modelTimeoutMs);
+  const anthropic = config.anthropicApiKey ? new AnthropicPromptModel(config.anthropicApiKey, config.anthropicModel, config.modelTimeoutMs) : undefined;
+  const openai = config.openaiApiKey ? new OpenAIPromptModel(config.openaiApiKey, config.openaiModel, config.modelTimeoutMs) : undefined;
+  if ((selected === "anthropic" || selected === "auto") && anthropic) return openai ? new FailoverPromptModel(anthropic, openai) : anthropic;
+  if ((selected === "openai" || selected === "auto") && openai) return anthropic ? new FailoverPromptModel(openai, anthropic) : openai;
   if (selected === "anthropic") throw new Error("ANTHROPIC_API_KEY is required for the Anthropic provider");
   if (selected === "openai") throw new Error("OPENAI_API_KEY is required for the OpenAI provider");
   return new LocalPromptModel();
+}
+
+/** Keep a completed retrieval run usable when one external model provider is unavailable. */
+export class FailoverPromptModel implements PromptModel {
+  readonly name: string;
+  constructor(private readonly primary: PromptModel, private readonly fallback: PromptModel) {
+    this.name = `failover:${primary.name}->${fallback.name}`;
+  }
+
+  async planTopics(company: CompanyConfig, evidence: EvidenceRecord[], signal?: AbortSignal): Promise<Array<{ slug: string; query: string }>> {
+    return this.attempt(model => model.planTopics(company, evidence, signal), signal);
+  }
+
+  async generate(company: CompanyConfig, opportunities: Opportunity[], evidence: Map<string, EvidenceRecord>, signal?: AbortSignal, options?: GenerationOptions): Promise<PromptCandidate[]> {
+    return this.attempt(model => model.generate(company, opportunities, evidence, signal, options), signal);
+  }
+
+  async review(company: CompanyConfig, candidates: PromptCandidate[], evidence: Map<string, EvidenceRecord>, signal?: AbortSignal): Promise<ModelReview[]> {
+    return this.attempt(model => model.review(company, candidates, evidence, signal), signal);
+  }
+
+  private async attempt<T>(operation: (model: PromptModel) => Promise<T>, signal?: AbortSignal): Promise<T> {
+    try {
+      return await operation(this.primary);
+    } catch (primaryError) {
+      if (signal?.aborted) throw primaryError;
+      return operation(this.fallback);
+    }
+  }
 }
 
 /** Prefer a different provider for evidence judgment when one is configured. */
