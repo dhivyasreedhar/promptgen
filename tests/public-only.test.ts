@@ -67,8 +67,8 @@ describe("public-only prompt path", () => {
     ]);
     expect(ranked.slice(0, 3)).toEqual([
       "https://example.com/",
-      "https://example.com/pricing",
       "https://example.com/product/analytics",
+      "https://example.com/pricing",
     ]);
   });
 
@@ -132,5 +132,37 @@ describe("public-only prompt path", () => {
 
     expect(artifacts).toHaveLength(1);
     expect(artifacts[0]?.url).toBe("https://public.co/");
+  });
+
+  it("discovers first-party product links and counts only successful pages toward the page budget", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL) => {
+      const url = String(input);
+      if (url.endsWith("/sitemap.xml") || url.endsWith("/sitemap_index.xml")) return new Response("missing", { status: 404 });
+      if (url === "https://public.co/") {
+        return {
+          ok: true, status: 200, url,
+          headers: new Headers({ "content-type": "text/html" }),
+          text: async () => `<html><body>${"Product platform for developers. ".repeat(5)}<a href="https://public.co/product/error-monitoring/">Errors</a><a href="/product/session-replay/">Replay</a></body></html>`,
+        } as unknown as Response;
+      }
+      if (url.includes("/product/error-monitoring") || url.includes("/product/session-replay")) {
+        return {
+          ok: true, status: 200, url,
+          headers: new Headers({ "content-type": "text/html" }),
+          text: async () => `<html><body>${"The platform provides production debugging capabilities. ".repeat(4)}</body></html>`,
+        } as unknown as Response;
+      }
+      return new Response("missing", { status: 404 });
+    }));
+
+    const artifacts = [];
+    for await (const artifact of new PublicWebConnector(3, 1_000).collect(company, new AbortController().signal)) {
+      artifacts.push(artifact);
+    }
+
+    expect(artifacts).toHaveLength(3);
+    expect(artifacts.map(item => item.url)).toEqual(expect.arrayContaining([
+      "https://public.co/", "https://public.co/product/error-monitoring/", "https://public.co/product/session-replay/",
+    ]));
   });
 });
