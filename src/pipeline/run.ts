@@ -549,11 +549,12 @@ async function cachedModelCall<T>(
   const key = hash(JSON.stringify({ contractVersion: "prompt-pipeline-v4", provider, operation, input }));
   const cached = db.getModelCache<T>(key);
   if (cached !== undefined) {
-    trace.record("model", "cache-hit", { provider, operation, key });
+    trace.record("model", "cache-hit", { provider, operation, key, durationMs: 0 });
     return cached;
   }
+  const started = performance.now();
   const value = await execute();
   db.setModelCache(key, provider, operation, value);
-  trace.record("model", "cache-write", { provider, operation, key });
+  trace.record("model", "cache-write", { provider, operation, key, durationMs: Math.round(performance.now() - started) });
   return value;
 }

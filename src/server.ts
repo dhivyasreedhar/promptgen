@@ -115,10 +115,15 @@ async function route(config: AppConfig, fixtures: boolean, hosted: PostgresMetad
     const events = db.traceForRun(traceMatch[1]);
     if (events.length === 0) { json(response, 404, { error: "Trace not found" }); return; }
     const stages: Record<string, number> = {}, actions: Record<string, number> = {}, rejectionReasons: Record<string, number> = {};
+    const modelDurations: Array<{ operation: string; provider?: string; durationMs: number }> = [];
     const reconciliation: Record<string, number> = {};
     const privacy: Array<Record<string, unknown>> = [];
     for (const event of events) {
       stages[event.stage] = (stages[event.stage] ?? 0) + 1; actions[event.action] = (actions[event.action] ?? 0) + 1;
+      if (event.stage === "model" && (event.action === "cache-write" || event.action === "cache-hit") && typeof event.data.durationMs === "number") {
+        const provider = typeof event.data.provider === "string" ? event.data.provider : undefined;
+        modelDurations.push({ operation: String(event.data.operation ?? "unknown"), ...(provider ? { provider } : {}), durationMs: event.data.durationMs });
+      }
       if (event.action === "rejected" && Array.isArray(event.data.findings)) for (const finding of event.data.findings) {
         if (finding && typeof finding === "object" && "code" in finding) { const code = String(finding.code); rejectionReasons[code] = (rejectionReasons[code] ?? 0) + 1; }
       }
@@ -132,6 +137,7 @@ async function route(config: AppConfig, fixtures: boolean, hosted: PostgresMetad
     const durationMs = Date.parse(events.at(-1)!.at) - Date.parse(events[0]!.at);
     json(response, 200, { runId: traceMatch[1], totalEvents: events.length, stages, actions,
       durationMs, reconciliation, privacyTransformations: privacy.slice(0, 200),
+      modelDurations,
       rejectionReasons: Object.entries(rejectionReasons).sort((a,b)=>b[1]-a[1]).slice(0,10),
       sourceFailures: events.filter(event => event.action === "source-failed").map(event => ({ source: event.data.source, error: event.data.error })) }); return;
   }
