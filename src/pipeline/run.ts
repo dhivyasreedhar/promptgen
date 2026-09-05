@@ -188,7 +188,11 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
 
     const evidenceById = new Map(db.evidenceByIds(relevantEvidenceIds).map(record => [record.id, record]));
     tracePrivacy(trace, [...evidenceById.values()], "candidate-generation");
-    const generationOptions = publicFastPath ? { minCandidates: 30, maxCandidates: 30 } : undefined;
+    // Keep the connected-source path responsive: 24 candidates are enough to
+    // select ten after strict entailment review, while avoiding an extra
+    // review batch (and its model latency) on every run. Backfill remains the
+    // safety net for unusually noisy evidence.
+    const generationOptions = publicFastPath ? { minCandidates: 30, maxCandidates: 30 } : { minCandidates: 24, maxCandidates: 24 };
     const generationVersion = publicFastPath ? "generate-v6-public-diverse-pages" : "generate-v5-atomic-core-mix";
     const generatedCandidates = await cachedModelCall(db, trace, model.name, generationVersion,
       { company, opportunities, generationOptions, evidence: opportunities.flatMap(item => item.evidenceIds.map(id => evidenceById.get(id))) },
