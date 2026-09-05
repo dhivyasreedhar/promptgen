@@ -41,5 +41,9 @@ services:
         value: Manicule promptgen demo
       - key: ANTHROPIC_API_KEY
         sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_JUDGE_MODEL
+        value: gpt-4.1-mini
       - key: DATABASE_URL
         sync: false

@@ -31,7 +31,7 @@ const envSchema = z.object({
   PROMPTGEN_MODEL_PROVIDER: z.enum(["auto", "anthropic", "openai", "local"]).default("auto"),
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_MODEL: z.string().default("gpt-5-mini"),
-  OPENAI_JUDGE_MODEL: z.string().default("gpt-5-mini"),
+  OPENAI_JUDGE_MODEL: z.string().default("gpt-4.1-mini"),
   OPENAI_EMBEDDING_MODEL: z.string().default("text-embedding-3-small"),
   PROMPTGEN_EMBEDDING_PROVIDER: z.enum(["ollama", "disabled"]).default("ollama"),
   PROMPTGEN_EMBEDDING_MODEL: z.string().min(1).default("nomic-embed-text"),

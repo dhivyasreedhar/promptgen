@@ -12,22 +12,30 @@ export class PublicWebConnector implements Connector {
   async *collect(company: CompanyConfig, signal: AbortSignal): AsyncIterable<SourceArtifact> {
     const origin = `https://${company.domain}`;
     const urls = await this.discover(origin, company.domain, signal);
-    for (const url of urls.slice(0, this.maxPages)) {
-      const response = await safeFetch(url, company.domain, this.timeoutMs, signal).catch(() => undefined);
-      if (!response?.ok) continue;
-      const html = await response.text();
-      const content = htmlToText(html);
-      if (content.length < 120) continue;
-      const canonical = response.url;
-      const version = hash(content).slice(0, 16);
-      yield {
-        id: stableId(company.id, "web", canonical, version), companyId: company.id, source: "web",
-        externalId: canonical, version, occurredAt: response.headers.get("last-modified") ?? isoNow(),
-        collectedAt: isoNow(), visibility: "public", title: extractTitle(html) || canonical,
-        content: content.slice(0, 80_000), url: canonical,
-        metadata: { contentType: response.headers.get("content-type"), etag: response.headers.get("etag") },
-      };
+    const selected = urls.slice(0, this.maxPages);
+    // Public pages are independent. Small parallel batches keep the fast path
+    // responsive without behaving like an aggressive crawler.
+    for (let offset = 0; offset < selected.length; offset += 4) {
+      const artifacts = await Promise.all(selected.slice(offset, offset + 4).map(url => this.fetchArtifact(company, url, signal)));
+      for (const artifact of artifacts) if (artifact) yield artifact;
     }
+  }
+
+  private async fetchArtifact(company: CompanyConfig, url: string, signal: AbortSignal): Promise<SourceArtifact | undefined> {
+    const response = await safeFetch(url, company.domain, this.timeoutMs, signal).catch(() => undefined);
+    if (!response?.ok) return undefined;
+    const html = await response.text();
+    const content = htmlToText(html);
+    if (content.length < 120) return undefined;
+    const canonical = response.url;
+    const version = hash(content).slice(0, 16);
+    return {
+      id: stableId(company.id, "web", canonical, version), companyId: company.id, source: "web",
+      externalId: canonical, version, occurredAt: response.headers.get("last-modified") ?? isoNow(),
+      collectedAt: isoNow(), visibility: "public", title: extractTitle(html) || canonical,
+      content: content.slice(0, 80_000), url: canonical,
+      metadata: { contentType: response.headers.get("content-type"), etag: response.headers.get("etag") },
+    };
   }
 
   private async discover(origin: string, domain: string, signal: AbortSignal): Promise<string[]> {

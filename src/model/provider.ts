@@ -8,12 +8,19 @@ import type { AppConfig } from "../config.js";
 import type { CompanyConfig, EvidenceRecord, Opportunity, PromptCandidate } from "../types.js";
 import { stableId } from "../util.js";
 
+const coverageSchema = z.object({
+  audience: z.string().min(2).max(80),
+  useCase: z.string().min(2).max(100),
+  constraint: z.string().min(2).max(100),
+  decisionStage: z.enum(["discovery", "evaluation", "purchase"]),
+});
 const generatedSchema = z.object({
   prompts: z.array(z.object({
     opportunityId: z.string(),
     text: z.string().min(12).max(240),
     archetype: z.enum(["category", "comparison", "constraint", "workflow"]),
     evidenceIds: z.array(z.string()).min(1),
+    coverage: coverageSchema,
   })).min(10).max(80),
 });
 type Generated = z.infer<typeof generatedSchema>;
@@ -22,11 +29,15 @@ const jsonSchema: Tool.InputSchema = {
   type: "object", additionalProperties: false, required: ["prompts"],
   properties: {
     prompts: { type: "array", minItems: 10, maxItems: 80, items: {
-      type: "object", additionalProperties: false, required: ["opportunityId", "text", "archetype", "evidenceIds"],
+      type: "object", additionalProperties: false, required: ["opportunityId", "text", "archetype", "evidenceIds", "coverage"],
       properties: {
         opportunityId: { type: "string" }, text: { type: "string", minLength: 12, maxLength: 240 },
         archetype: { type: "string", enum: ["category", "comparison", "constraint", "workflow"] },
         evidenceIds: { type: "array", minItems: 1, items: { type: "string" } },
+        coverage: { type: "object", additionalProperties: false, required: ["audience", "useCase", "constraint", "decisionStage"], properties: {
+          audience: { type: "string", minLength: 2, maxLength: 80 }, useCase: { type: "string", minLength: 2, maxLength: 100 },
+          constraint: { type: "string", minLength: 2, maxLength: 100 }, decisionStage: { type: "string", enum: ["discovery", "evaluation", "purchase"] },
+        } },
       },
     } },
   },
@@ -35,9 +46,11 @@ const jsonSchema: Tool.InputSchema = {
 export interface PromptModel {
   readonly name: string;
   planTopics(company: CompanyConfig, evidence: EvidenceRecord[], signal?: AbortSignal): Promise<Array<{ slug: string; query: string }>>;
-  generate(company: CompanyConfig, opportunities: Opportunity[], evidence: Map<string, EvidenceRecord>, signal?: AbortSignal): Promise<PromptCandidate[]>;
+  generate(company: CompanyConfig, opportunities: Opportunity[], evidence: Map<string, EvidenceRecord>, signal?: AbortSignal, options?: GenerationOptions): Promise<PromptCandidate[]>;
   review(company: CompanyConfig, candidates: PromptCandidate[], evidence: Map<string, EvidenceRecord>, signal?: AbortSignal): Promise<ModelReview[]>;
 }
+
+export interface GenerationOptions { minCandidates?: number; maxCandidates?: number }
 
 export interface ModelReview {
   candidateId: string;
@@ -49,6 +62,7 @@ export interface ModelReview {
   semanticKey: string;
   score: number;
   findings: string[];
+  unsupportedClaims: string[];
 }
 
 export function createPromptModel(config: AppConfig): PromptModel {
@@ -58,6 +72,14 @@ export function createPromptModel(config: AppConfig): PromptModel {
   if (selected === "anthropic") throw new Error("ANTHROPIC_API_KEY is required for the Anthropic provider");
   if (selected === "openai") throw new Error("OPENAI_API_KEY is required for the OpenAI provider");
   return new LocalPromptModel();
+}
+
+/** Prefer a different provider for evidence judgment when one is configured. */
+export function createReviewModel(config: AppConfig, fallback: PromptModel): PromptModel {
+  if (config.openaiApiKey && !fallback.name.startsWith("openai:")) {
+    return new OpenAIPromptModel(config.openaiApiKey, config.openaiJudgeModel, config.modelTimeoutMs);
+  }
+  return fallback;
 }
 
 abstract class StructuredPromptModel implements PromptModel {
@@ -73,7 +95,7 @@ abstract class StructuredPromptModel implements PromptModel {
     return (await this.planStructured(system, user, signal)).topics;
   }
 
-  async generate(company: CompanyConfig, opportunities: Opportunity[], evidence: Map<string, EvidenceRecord>, signal?: AbortSignal): Promise<PromptCandidate[]> {
+  async generate(company: CompanyConfig, opportunities: Opportunity[], evidence: Map<string, EvidenceRecord>, signal?: AbortSignal, options: GenerationOptions = {}): Promise<PromptCandidate[]> {
     if (opportunities.length === 0) return [];
     const allowedOpportunityIds = new Set(opportunities.map(item => item.id));
     const opportunityById = new Map(opportunities.map(item => [item.id, item]));
@@ -86,37 +108,57 @@ abstract class StructuredPromptModel implements PromptModel {
         return record ? externalEvidence(record) : undefined;
       }).filter(Boolean),
     }));
-    const system = `You generate natural discovery prompts for an AI brand-recommendation system. Produce 2-4 concise questions per supported opportunity, each ending in a question mark. Every question must naturally invite a product, tool, platform, or vendor recommendation—not merely advice, implementation steps, a definition, or an explanation of why a feature matters. Prefer explicit solution language such as “which tools,” “what platforms,” or “what alternatives.” Prompts should sound like real buyers, omit the tracked company's name, describe a genuine problem or selection criterion, and allow multiple reasonable vendors. For observed-demand opportunities, every prompt must cite at least one demand or customer-language evidence ID and one confirmed capability evidence ID. For public-inference opportunities, conservatively infer an evaluation situation from current public product evidence and cite at least one confirmed public capability record; never present it as an observed customer question. Planned, investigating, deprecated, superseded, expired, inaccessible, or never-expose evidence is never proof of current capability. Never copy or expose private facts, customer names, metrics, quotes, or internal project names. Use private evidence only to infer generalized language. Do not produce boundary or negative-control prompts in this call.`;
-    const user = `Company: ${company.name}\nCategory: ${company.category}\n\nSupported opportunities and evidence:\n${JSON.stringify(payload)}\n\nReturn 30-50 diverse candidates. Use only supplied opportunity and evidence IDs. Do not assume capabilities absent from evidence.`;
+    const system = `You generate natural discovery prompts for an AI brand-recommendation system. Produce concise questions, each ending in a question mark. Every question must naturally invite a product, tool, platform, or vendor recommendation—not merely advice, implementation steps, a definition, or an explanation of why a feature matters. Prefer explicit solution language such as “which tools,” “what platforms,” or “what alternatives.” Prompts should sound like real buyers, omit the tracked company's name, describe a genuine problem or selection criterion, and allow multiple reasonable vendors. At least 70% of the set must concern the company's primary product workflow; include no more than two total security, compliance, privacy, procurement, or deployment questions unless observed buyer demand supports more. Do not turn public legal text, vendor paperwork, marketing assets, documentation availability, or setup wizards into standalone opportunities. For observed-demand opportunities, every prompt must cite at least one demand or customer-language evidence ID and one confirmed capability evidence ID. For public-inference opportunities, conservatively infer an evaluation situation from current public product evidence and cite at least one confirmed public capability record; never present it as an observed customer question. Every material clause—including audience, capability, integration, constraint, performance promise, pricing property, and purchase channel—must be directly supported by a cited record. Remove a modifier or clause when its support is only implied. Planned, investigating, deprecated, superseded, expired, inaccessible, or never-expose evidence is never proof of current capability. Never copy or expose private facts, customer names, metrics, quotes, or internal project names. Use private evidence only to infer generalized language. Assign concise coverage dimensions; do not invent an audience or decision stage absent from the evidence or the wording. Do not produce boundary or negative-control prompts in this call.`;
+    const minCandidates = Math.max(10, Math.min(30, options.minCandidates ?? 30));
+    const maxCandidates = Math.max(minCandidates, Math.min(50, options.maxCandidates ?? 50));
+    const quantity = minCandidates === maxCandidates ? `exactly ${minCandidates}` : `${minCandidates}-${maxCandidates}`;
+    const user = `Company: ${company.name}\nCategory: ${company.category}\n\nSupported opportunities and evidence:\n${JSON.stringify(payload)}\n\nReturn ${quantity} candidates covering distinct buyer situations before producing variations. Use only supplied opportunity and evidence IDs. Do not assume capabilities absent from evidence.`;
     const generated = await this.generateStructured(system, user, signal);
     return generated.prompts
       .filter(item => allowedOpportunityIds.has(item.opportunityId) && item.evidenceIds.every(id => allowedEvidenceIds.has(id)))
-      .map((item, index) => ({
-        id: stableId(company.id, "candidate", item.opportunityId, item.text, String(index)), opportunityId: item.opportunityId,
-        text: item.text.trim(), archetype: item.archetype, evidenceIds: [...new Set(item.evidenceIds)], version: 1,
-        evidenceBasis: opportunityById.get(item.opportunityId)?.evidenceBasis ?? "observed-demand",
-      }));
+      .map((item, index) => {
+        const evidenceBasis = opportunityById.get(item.opportunityId)?.evidenceBasis ?? "observed-demand";
+        return {
+          id: stableId(company.id, "candidate", item.opportunityId, item.text, String(index)), opportunityId: item.opportunityId,
+          text: item.text.trim(), archetype: item.archetype, evidenceIds: [...new Set(item.evidenceIds)], version: 1,
+          evidenceBasis, coverage: evidenceBasis === "public-inference" ? { ...item.coverage, audience: "general buyer" } : item.coverage,
+        };
+      });
   }
 
   async review(company: CompanyConfig, candidates: PromptCandidate[], evidence: Map<string, EvidenceRecord>, signal?: AbortSignal): Promise<ModelReview[]> {
     if (candidates.length === 0) return [];
-    const system = `You are an independent, strict evaluator for AI brand-recommendation tracking prompts. Review every candidate and judge each cited record against the actual question, not merely the company's broad category. Return in relevantEvidenceIds only cited IDs that directly support a material part of the question. demandSupported=true only if relevant demand or customer-language evidence demonstrates that buyers actually have this need. capabilitySupported=true only if relevant current, confirmed capability evidence demonstrates that the tracked company can credibly address it. For evidenceBasis=observed-demand, supported requires both demandSupported and capabilitySupported. For evidenceBasis=public-inference, supported may be true with demandSupported=false only when the prompt is a conservative, plausible evaluation question logically derived from public capability evidence and introduces no unsupported audience, constraint, integration, purchase channel, or modality. Planned, investigating, deprecated, superseded, expired, inaccessible, or never-expose evidence cannot establish capability. usable=true only when the question sounds like a plausible real buyer query, gives multiple vendors a fair chance, and is likely to produce a product, tool, platform, or vendor recommendation. Questions asking only how important something is, why it matters, how to implement it, or what process to follow are unusable. Assign a concise kebab-case semanticKey describing the underlying buyer opportunity; semantically equivalent prompts—including differently worded AI-automation questions—must receive the same key. Score 0-1. Do not reward fluent wording when evidence is weak.`;
+    const system = `You are an independent, strict evaluator for AI brand-recommendation tracking prompts. First decompose each question into every material claim: audience, buyer need, capability, integration, constraint, scale or performance promise, pricing property, purchase channel, and modality. Treat the supplied coverage audience, use case, constraint, and decision stage as claims too. Check every claim against the exact cited excerpts, not merely the company's broad category. Put each unsupported or only-implied prompt clause in unsupportedClaims using a short verbatim phrase; prefix unsupported coverage labels with "coverage:". supported must be false whenever unsupportedClaims is non-empty. Return in relevantEvidenceIds only cited IDs that directly support at least one material claim. demandSupported=true only if relevant demand or customer-language evidence demonstrates that buyers actually have this need. capabilitySupported=true only if relevant current, confirmed capability evidence demonstrates that the tracked company can credibly address the complete capability claim. For evidenceBasis=observed-demand, supported requires both demandSupported and capabilitySupported. For evidenceBasis=public-inference, supported may be true with demandSupported=false only when the prompt is a conservative, plausible evaluation question logically derived from public capability evidence and introduces no unsupported audience, constraint, integration, purchase channel, performance, pricing, or modality. Planned, investigating, deprecated, superseded, expired, inaccessible, or never-expose evidence cannot establish capability. usable=true only when the question sounds like a plausible real buyer query, gives multiple vendors a fair chance, and is likely to produce a recommendation for the company's primary product category. Vendor paperwork, public reports, documentation availability, setup wizards, generic compliance guidance, and marketing assets are not useful standalone tracking prompts. Questions asking only how important something is, why it matters, how to implement it, or what process to follow are unusable. Assign a concise kebab-case semanticKey describing the underlying buyer opportunity; semantically equivalent prompts must receive the same key. Score 0-1. Do not reward fluent wording when evidence is weak.`;
     const batches: PromptCandidate[][] = [];
-    for (let offset = 0; offset < candidates.length; offset += 12) batches.push(candidates.slice(offset, offset + 12));
+    for (let offset = 0; offset < candidates.length; offset += 8) batches.push(candidates.slice(offset, offset + 8));
     const reviews: ModelReview[] = [];
-    // Two concurrent, small responses balance provider latency against rate limits.
-    for (let offset = 0; offset < batches.length; offset += 2) {
-      const group = batches.slice(offset, offset + 2);
+    // Small concurrent responses are both faster and substantially less likely
+    // to omit candidates from a structured array.
+    for (let offset = 0; offset < batches.length; offset += 4) {
+      const group = batches.slice(offset, offset + 4);
       const completed = await Promise.all(group.map(async batch => {
         const payload = batch.map(candidate => ({
           id: candidate.id, text: candidate.text, archetype: candidate.archetype, evidenceBasis: candidate.evidenceBasis ?? "observed-demand",
+          coverage: candidate.coverage,
           evidence: candidate.evidenceIds.map(id => {
             const record = evidence.get(id);
             return record ? externalEvidence(record) : undefined;
           }).filter(Boolean),
         }));
         try {
-          return (await this.reviewStructured(system, `Company: ${company.name}\nCategory: ${company.category}\nCandidates:\n${JSON.stringify(payload)}`, signal)).reviews;
+          const requestedIds = new Set(batch.map(candidate => candidate.id));
+          const returned = (await this.reviewStructured(system,
+            `Company: ${company.name}\nCategory: ${company.category}\nReturn exactly one review for each of these ${batch.length} candidate IDs: ${[...requestedIds].join(", ")}\nCandidates:\n${JSON.stringify(payload)}`, signal)).reviews
+            .filter(review => requestedIds.has(review.candidateId));
+          const byId = new Map(returned.map(review => [review.candidateId, review]));
+          const missing = batch.filter(candidate => !byId.has(candidate.id));
+          if (missing.length > 0) {
+            const retryPayload = payload.filter(item => missing.some(candidate => candidate.id === item.id));
+            const retried = (await this.reviewStructured(system,
+              `Return exactly one review for every candidate. Missing IDs: ${missing.map(item => item.id).join(", ")}\nCompany: ${company.name}\nCategory: ${company.category}\nCandidates:\n${JSON.stringify(retryPayload)}`, signal)).reviews;
+            for (const review of retried) if (requestedIds.has(review.candidateId)) byId.set(review.candidateId, review);
+          }
+          return [...byId.values()];
         } catch {
           // A provider occasionally violates its own tool schema. Preserve the
           // deterministic safety gates and make the degraded critic visible.
@@ -138,11 +180,11 @@ function fallbackReview(candidate: PromptCandidate, evidence: Map<string, Eviden
   const records = relevantEvidenceIds.map(id => evidence.get(id)!);
   const demandSupported = records.some(record => (record.kind === "demand" || record.kind === "language") && isBuyingIntent(evidenceBuyerIntent(record)));
   const capabilitySupported = records.some(record => record.kind === "capability" || (record.kind === "change" && record.lifecycle === "confirmed"));
-  const publicInference = candidate.evidenceBasis === "public-inference" && records.length > 0 && records.every(record => record.visibility === "public");
-  const supported = capabilitySupported && (demandSupported || publicInference);
-  return { candidateId: candidate.id, supported, demandSupported, capabilitySupported,
-    relevantEvidenceIds, usable: supported, semanticKey: candidate.opportunityId, score: publicInference ? 0.55 : 0.62,
-    findings: ["provider-review-schema-fallback"] };
+  // Claim-level support cannot be reconstructed safely from a malformed model
+  // response. Fail closed instead of allowing broad category overlap through.
+  return { candidateId: candidate.id, supported: false, demandSupported, capabilitySupported,
+    relevantEvidenceIds, usable: false, semanticKey: candidate.opportunityId, score: 0,
+    findings: ["provider-review-schema-fallback"], unsupportedClaims: ["atomic claim review unavailable"] };
 }
 
 class AnthropicPromptModel extends StructuredPromptModel {
@@ -289,7 +331,9 @@ class LocalPromptModel implements PromptModel {
     })));
   }
   async review(_company: CompanyConfig, candidates: PromptCandidate[]): Promise<ModelReview[]> {
-    return candidates.map(candidate => ({ candidateId: candidate.id, supported: true, demandSupported: true, capabilitySupported: true, relevantEvidenceIds: candidate.evidenceIds, usable: true, semanticKey: candidate.opportunityId, score: 0.85, findings: [] }));
+    return candidates.map(candidate => ({ candidateId: candidate.id, supported: true, demandSupported: true, capabilitySupported: true,
+      relevantEvidenceIds: candidate.evidenceIds, usable: true, semanticKey: candidate.opportunityId, score: 0.85,
+      findings: [], unsupportedClaims: [] }));
   }
 }
 
@@ -310,11 +354,13 @@ const reviewSchema = z.object({ reviews: z.array(z.object({
   candidateId: z.string(), supported: z.boolean(), demandSupported: z.boolean(), capabilitySupported: z.boolean(),
   relevantEvidenceIds: z.array(z.string()).max(8), usable: z.boolean(), semanticKey: z.string().regex(/^[a-z0-9-]+$/),
   score: z.number().min(0).max(1), findings: z.array(z.string().max(240)).max(8),
+  unsupportedClaims: z.array(z.string().min(1).max(160)).max(12),
 })).max(80) });
 const reviewJsonSchema: Tool.InputSchema = {
   type: "object", additionalProperties: false, required: ["reviews"], properties: {
-    reviews: { type: "array", maxItems: 80, items: { type: "object", additionalProperties: false, required: ["candidateId", "supported", "demandSupported", "capabilitySupported", "relevantEvidenceIds", "usable", "semanticKey", "score", "findings"], properties: {
+    reviews: { type: "array", maxItems: 80, items: { type: "object", additionalProperties: false, required: ["candidateId", "supported", "demandSupported", "capabilitySupported", "relevantEvidenceIds", "usable", "semanticKey", "score", "findings", "unsupportedClaims"], properties: {
       candidateId: { type: "string" }, supported: { type: "boolean" }, demandSupported: { type: "boolean" }, capabilitySupported: { type: "boolean" }, relevantEvidenceIds: { type: "array", maxItems: 8, items: { type: "string" } }, usable: { type: "boolean" }, semanticKey: { type: "string", pattern: "^[a-z0-9-]+$" }, score: { type: "number", minimum: 0, maximum: 1 }, findings: { type: "array", maxItems: 8, items: { type: "string", maxLength: 240 } },
+      unsupportedClaims: { type: "array", maxItems: 12, items: { type: "string", minLength: 1, maxLength: 160 } },
     } } },
   },
 };

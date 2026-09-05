@@ -65,4 +65,23 @@ describe("selectPrompts", () => {
   it("marks approved stable prompts as benchmark prompts", () => {
     expect(selectPrompts([candidate(0)], 1, new Set(), new Set(["c0"])).discovery[0]?.set).toBe("benchmark");
   });
+
+  it("caps peripheral compliance, pricing, and setup prompts when core workflows are available", () => {
+    const core = Array.from({ length: 8 }, (_, index) => candidate(index));
+    const peripheral = [
+      { ...candidate(8), text: "Which tools publish security reports for procurement teams?" },
+      { ...candidate(9), text: "Which platforms offer annual plans with volume discounts?" },
+      { ...candidate(10), text: "Which products include a CLI setup wizard?" },
+      { ...candidate(11), text: "Which vendors provide GDPR compliance documentation?" },
+    ];
+    const selected = selectPrompts([...core, ...peripheral], 10).discovery;
+    expect(selected).toHaveLength(10);
+    expect(selected.filter(item => /security reports|annual plans|wizard|compliance documentation/i.test(item.text))).toHaveLength(2);
+  });
+
+  it("collapses multiple setup-wizard formulations", () => {
+    const first = { ...candidate(0), text: "Which analytics products include a CLI setup wizard?" };
+    const second = { ...candidate(1), text: "What tools offer a wizard for installing analytics?" };
+    expect(selectPrompts([first, second], 2).discovery).toHaveLength(1);
+  });
 });

@@ -3,7 +3,7 @@ import path from "node:path";
 import type { AppConfig } from "../config.js";
 import { buildConnectors } from "../connectors/index.js";
 import { EvidenceExtractor } from "../evidence/extractor.js";
-import { createPromptModel, type ModelReview } from "../model/provider.js";
+import { createPromptModel, createReviewModel, type ModelReview } from "../model/provider.js";
 import { discoverOpportunities } from "../opportunities/discover.js";
 import { validateCandidates } from "../prompts/validate.js";
 import { selectPrompts, summarizeCoverage } from "../prompts/select.js";
@@ -17,12 +17,13 @@ import { EvidenceDatabase } from "../store/database.js";
 import { PostgresMetadataStore } from "../store/postgres-metadata.js";
 import { artifactObjectKey, EncryptedFileObjectStore } from "../store/object-store.js";
 import { TraceRecorder } from "../trace.js";
-import type { CompanyConfig, EvidenceNeed, EvidenceRecord, MissingEvidence, RunResult, ValidatedCandidate } from "../types.js";
-import { hash, isoNow, log, newRunId } from "../util.js";
+import type { CompanyConfig, EvidenceNeed, EvidencePack, EvidenceRecord, MissingEvidence, Opportunity, RunResult, ValidatedCandidate } from "../types.js";
+import { hash, isoNow, log, newRunId, stableId, tokenize } from "../util.js";
 import { classifyFailure } from "../operations/errors.js";
 import { operationalMetrics } from "../operations/metrics.js";
 import { transformEvidenceForExternal } from "../privacy/transform.js";
 import { isBuyingSignal } from "../context/intent.js";
+import { isEvidenceEligible } from "../context/policy.js";
 
 export interface RunOptions { fixtures: boolean; timeoutMs?: number; signal?: AbortSignal }
 
@@ -36,6 +37,8 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
   db.startRun(runId, company.id, startedAt);
   const trace = new TraceRecorder(db, runId, company.id);
   const model = createPromptModel(config);
+  const reviewer = createReviewModel(config, model);
+  const publicFastPath = !options.fixtures && company.enabledSources.every(source => source === "web" || source === "github");
   const metadata = config.postgresUrl ? new PostgresMetadataStore(config.postgresUrl, config.tenantId, config.tenantName) : undefined;
   const objectStore = config.objectEncryptionKey ? new EncryptedFileObjectStore(config.objectsDir, config.objectEncryptionKey) : undefined;
   const controller = new AbortController();
@@ -50,7 +53,8 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
   try {
     await metadata?.startRun(company, runId, startedAt, model.name);
     trace.record("run", "started", { fixtures: options.fixtures, provider: model.name, enabledSources: company.enabledSources });
-    for (const connector of buildConnectors(config, options.fixtures).filter(item => company.enabledSources.includes(item.source))) {
+    const connectorConfig = publicFastPath ? { ...config, maxPublicPages: Math.min(config.maxPublicPages, 8) } : config;
+    for (const connector of buildConnectors(connectorConfig, options.fixtures).filter(item => company.enabledSources.includes(item.source))) {
       let sourceCount = 0;
       let collectedCount = 0;
       try {
@@ -136,7 +140,7 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
     const embeddingProvider = config.embeddingProvider === "ollama"
       ? new OllamaEmbeddingProvider(config.embeddingModel, config.embeddingDimensions, config.ollamaUrl)
       : undefined;
-    if (metadata && embeddingProvider && config.embeddingRunLimit > 0) {
+    if (metadata && embeddingProvider && config.embeddingRunLimit > 0 && !publicFastPath) {
       await backfillEmbeddings(metadata, company.id, embeddingProvider, config.embeddingRunLimit, trace, controller.signal);
     }
     const localRetriever = new EvidenceRetriever(db);
@@ -147,36 +151,53 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
     const broadPacks = await retrieve(planEvidenceNeeds(company, []));
     const broadEvidence = uniqueEvidence(broadPacks.flatMap(pack => pack.records.map(item => item.evidence)));
     metrics.evidenceRetrieved = broadEvidence.length;
-    tracePrivacy(trace, broadEvidence, "topic-planning");
-    const modelTopics = await cachedModelCall(db, trace, model.name, "plan-topics", { company, broadEvidence }, () => model.planTopics(company, broadEvidence, controller.signal));
-    const topics = dedupeTopics([...modelTopics, ...tags.map(slug => ({ slug, query: slug.replaceAll("-", " ") }))]);
-    trace.record("retrieve", "topic-plan-created", { provider: model.name, broadEvidenceIds: broadEvidence.map(item => item.id), topics });
-    const needs = planEvidenceNeeds(company, topics);
-    trace.record("retrieve", "plan-created", { needs });
-    const packs = await retrieve(needs);
-    metrics.evidenceRetrieved = new Set([
-      ...broadEvidence.map(item => item.id),
-      ...packs.flatMap(pack => pack.records.map(item => item.evidence.id)),
-    ]).size;
+    let packs: EvidencePack[];
+    let opportunities: Opportunity[];
+    let relevantEvidenceIds: string[];
+    if (publicFastPath) {
+      const publicEvidence = db.evidenceForCompany(company.id).filter(record => record.visibility === "public" && isEvidenceEligible(record));
+      opportunities = publicOpportunities(company, publicEvidence);
+      packs = broadPacks;
+      relevantEvidenceIds = [...new Set(opportunities.flatMap(item => item.evidenceIds))];
+      metrics.evidenceRetrieved = relevantEvidenceIds.length;
+      trace.record("retrieve", "public-fast-path", { publicEvidence: publicEvidence.length, opportunities: opportunities.length,
+        skipped: ["model-topic-planning", "embedding-backfill", "candidate-retrieval", "generation-backfill"] });
+    } else {
+      tracePrivacy(trace, broadEvidence, "topic-planning");
+      const modelTopics = await cachedModelCall(db, trace, model.name, "plan-topics", { company, broadEvidence }, () => model.planTopics(company, broadEvidence, controller.signal));
+      const topics = dedupeTopics([...modelTopics, ...tags.map(slug => ({ slug, query: slug.replaceAll("-", " ") }))]);
+      trace.record("retrieve", "topic-plan-created", { provider: model.name, broadEvidenceIds: broadEvidence.map(item => item.id), topics });
+      const needs = planEvidenceNeeds(company, topics);
+      trace.record("retrieve", "plan-created", { needs });
+      packs = await retrieve(needs);
+      metrics.evidenceRetrieved = new Set([
+        ...broadEvidence.map(item => item.id),
+        ...packs.flatMap(pack => pack.records.map(item => item.evidence.id)),
+      ]).size;
+      opportunities = discoverOpportunities(company.id, packs);
+      relevantEvidenceIds = [...new Set([...broadEvidence.map(record => record.id), ...packs.flatMap(pack => pack.records.map(item => item.evidence.id))])];
+    }
     for (const pack of packs) trace.record("retrieve", pack.missing ? "need-missing" : "need-satisfied", {
       query: pack.need.query,
       records: pack.records.map(record => ({ id: record.evidence.id, source: record.evidence.source, kind: record.evidence.kind, score: record.score, reasons: record.reasons })),
       reconciliation: pack.reconciliation ?? [],
     }, pack.need.id);
 
-    const opportunities = discoverOpportunities(company.id, packs);
     metrics.opportunities = opportunities.length;
     for (const opportunity of opportunities) trace.record("opportunity", "discovered", opportunity as unknown as Record<string, unknown>, opportunity.id);
 
-    const relevantEvidenceIds = [...new Set([...broadEvidence.map(record => record.id), ...packs.flatMap(pack => pack.records.map(item => item.evidence.id))])];
     const evidenceById = new Map(db.evidenceByIds(relevantEvidenceIds).map(record => [record.id, record]));
     tracePrivacy(trace, [...evidenceById.values()], "candidate-generation");
-    const generatedCandidates = await cachedModelCall(db, trace, model.name, "generate-v3-recommendation-seeking", { company, opportunities, evidence: opportunities.flatMap(item => item.evidenceIds.map(id => evidenceById.get(id))) }, () => model.generate(company, opportunities, evidenceById, controller.signal));
+    const generationOptions = publicFastPath ? { minCandidates: 20, maxCandidates: 20 } : undefined;
+    const generationVersion = publicFastPath ? "generate-v5-public-fast-core-mix" : "generate-v5-atomic-core-mix";
+    const generatedCandidates = await cachedModelCall(db, trace, model.name, generationVersion,
+      { company, opportunities, generationOptions, evidence: opportunities.flatMap(item => item.evidenceIds.map(id => evidenceById.get(id))) },
+      () => model.generate(company, opportunities, evidenceById, controller.signal, generationOptions));
     const candidateNeeds: EvidenceNeed[] = generatedCandidates.slice(0, 60).map(candidate => ({
       id: `candidate:${candidate.id}`, query: candidate.text, kinds: ["demand", "language", "capability", "constraint"],
       reason: "Candidate-specific entailment and conflict check", preferredSources: ["web", "github", "gsc", "intercom", "slack", "calls", "linear"],
     }));
-    const candidatePacks = await retrieve(candidateNeeds);
+    const candidatePacks = publicFastPath ? [] : await retrieve(candidateNeeds);
     const candidatePackById = new Map(candidatePacks.map(pack => [pack.need.id.slice("candidate:".length), pack]));
     for (const pack of candidatePacks) {
       for (const item of pack.records) evidenceById.set(item.evidence.id, item.evidence);
@@ -206,20 +227,20 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
     const deterministic = validateCandidates(company, eligibleCandidates, opportunities, evidenceById);
     const reviewable = deterministic.filter(item => item.accepted);
     tracePrivacy(trace, reviewable.flatMap(item => item.evidenceIds.map(id => evidenceById.get(id))).filter((item): item is EvidenceRecord => Boolean(item)), "candidate-review");
-    const modelReviews = await cachedModelCall(db, trace, model.name, "review-v4-recommendation-seeking", { company, candidates: reviewable, evidence: reviewable.flatMap(item => item.evidenceIds.map(id => evidenceById.get(id))) }, () => model.review(company, reviewable, evidenceById, controller.signal));
+    const modelReviews = await cachedModelCall(db, trace, reviewer.name, "review-v6-complete-atomic-claims", { company, candidates: reviewable, evidence: reviewable.flatMap(item => item.evidenceIds.map(id => evidenceById.get(id))) }, () => reviewer.review(company, reviewable, evidenceById, controller.signal));
     const reviewById = new Map(modelReviews.map(review => [review.candidateId, review]));
     let validated = attachPromptContext(applyModelReviews(deterministic, reviewById, evidenceById), opportunities, evidenceById);
     const guidance = metadata ? await metadata.promptGuidance(company.id) : { rejected: [], preferred: [], benchmark: [], rules: [] };
     validated = applyPromptGuidance(validated, new Set(guidance.rejected), guidance.rules);
     const preferredPromptIds = new Set(guidance.preferred);
     trace.record("feedback", "guidance-applied", { rejectedPromptIds: guidance.rejected, preferredPromptIds: guidance.preferred });
-    trace.record("review", "model-critique-complete", { provider: model.name, requested: reviewable.length, returned: modelReviews.length, accepted: validated.filter(item => item.accepted).length });
+    trace.record("review", "model-critique-complete", { provider: reviewer.name, requested: reviewable.length, returned: modelReviews.length, accepted: validated.filter(item => item.accepted).length });
     let selection = selectPrompts(validated, 10, preferredPromptIds, new Set(guidance.benchmark));
 
     // Diversity can make a large valid pool select fewer than ten. Retry only on
     // uncovered evidence packs, then send every backfill candidate through the
     // identical repair, deterministic validation, and independent critic gates.
-    if (selection.discovery.length < 10) {
+    if (!publicFastPath && selection.discovery.length < 10) {
       const coveredOpportunities = new Set(selection.discovery.map(item => item.opportunityId));
       const uncovered = opportunities.filter(item => !coveredOpportunities.has(item.id));
       trace.record("backfill", "started", { missing: 10 - selection.discovery.length, uncoveredOpportunityIds: uncovered.map(item => item.id) });
@@ -251,10 +272,10 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
         const backfillRepairs = repairCandidates(backfillCandidates, uncovered, evidenceById);
         const backfillDeterministic = validateCandidates(company, backfillRepairs.map(item => item.repaired), uncovered, evidenceById);
         const backfillReviewable = backfillDeterministic.filter(item => item.accepted);
-        const backfillReviews = await cachedModelCall(db, trace, model.name, "review-backfill-v4-recommendation-seeking", {
+        const backfillReviews = await cachedModelCall(db, trace, reviewer.name, "review-backfill-v6-complete-atomic-claims", {
           company, candidates: backfillReviewable,
           evidence: backfillReviewable.flatMap(item => item.evidenceIds.map(id => evidenceById.get(id))),
-        }, () => model.review(company, backfillReviewable, evidenceById, controller.signal));
+        }, () => reviewer.review(company, backfillReviewable, evidenceById, controller.signal));
         const backfillById = new Map(backfillReviews.map(review => [review.candidateId, review]));
         const validatedBackfill = attachPromptContext(applyModelReviews(backfillDeterministic, backfillById, evidenceById), uncovered, evidenceById);
         validated = applyPromptGuidance([...validated, ...validatedBackfill], new Set(guidance.rejected), guidance.rules);
@@ -406,11 +427,54 @@ function uniqueEvidence<T extends { id: string }>(records: T[]): T[] {
   return [...new Map(records.map(record => [record.id, record])).values()];
 }
 
+const PUBLIC_TOPIC_STOP = new Set([
+  "about", "after", "also", "available", "built", "company", "from", "have", "includes", "into", "more", "native",
+  "offers", "platform", "product", "provides", "support", "supports", "their", "these", "they", "this", "tools", "using", "with", "your",
+]);
+const PERIPHERAL_PUBLIC_CLAIM = /\b(data processing register|security report|documentation available|documented guidance|install wizard|cli install|terms of service|privacy policy|marketing assets?)\b/i;
+
+/**
+ * Public-only runs do not need an LLM round merely to decide what to retrieve:
+ * the current capability statements are themselves the bounded opportunity
+ * seeds. The generation model still turns them into buyer questions and the
+ * independent critic still verifies every material claim.
+ */
+export function publicOpportunities(company: CompanyConfig, evidence: EvidenceRecord[]): Opportunity[] {
+  const companyTerms = new Set(tokenize(`${company.name} ${company.domain}`));
+  const capabilities = evidence.filter(record => record.kind === "capability" || (record.kind === "change" && record.lifecycle === "confirmed"))
+    .sort((left, right) => ((right.authority ?? 0) + right.confidence) - ((left.authority ?? 0) + left.confidence));
+  const grouped = new Map<string, EvidenceRecord[]>();
+  let peripheralCount = 0;
+  for (const record of capabilities) {
+    if (PERIPHERAL_PUBLIC_CLAIM.test(record.claim)) {
+      if (peripheralCount >= 4) continue;
+      peripheralCount += 1;
+    }
+    const labeled = record.tags.flatMap(tag => tokenize(tag.replaceAll("-", " ")));
+    const terms = [...labeled, ...tokenize(record.claim)].filter(term => term.length >= 4 && !PUBLIC_TOPIC_STOP.has(term) && !companyTerms.has(term));
+    const topic = [...new Set(terms)].slice(0, 4).join("-");
+    if (!topic) continue;
+    const records = grouped.get(topic) ?? [];
+    if (records.length < 3) records.push(record);
+    grouped.set(topic, records);
+    if (grouped.size >= 24) break;
+  }
+  return [...grouped].map(([topic, records]) => ({
+    id: stableId(company.id, "public-opportunity", topic), topic,
+    buyerProblem: `Buyers may evaluate products for ${topic.replaceAll("-", " ")}; inferred conservatively from current public capability evidence.`,
+    segment: records.find(record => record.segment)?.segment ?? "buyers evaluating this category",
+    evidenceIds: records.map(record => record.id), sources: [...new Set(records.map(record => record.source))],
+    demandScore: 0.2, capabilityScore: Math.min(1, records.reduce((sum, record) => sum + record.confidence, 0) / records.length),
+    confidence: Math.min(0.75, 0.5 + records.length * 0.07), evidenceBasis: "public-inference" as const,
+    coverage: { audience: "general buyer", useCase: topic.replaceAll("-", " "), constraint: "none stated", decisionStage: "evaluation" as const },
+  }));
+}
+
 function dedupeTopics(topics: Array<{ slug: string; query: string }>): Array<{ slug: string; query: string }> {
   return [...new Map(topics.map(topic => [topic.slug, topic])).values()].slice(0, 24);
 }
 
-function applyModelReviews(
+export function applyModelReviews(
   candidates: ValidatedCandidate[],
   reviewById: Map<string, ModelReview>,
   evidenceById: Map<string, EvidenceRecord>,
@@ -425,8 +489,11 @@ function applyModelReviews(
     const hasCapability = relevantRecords.some(record => record.kind === "capability" || (record.kind === "change" && record.lifecycle === "confirmed"));
     const publicInference = candidate.evidenceBasis === "public-inference" && relevantRecords.length > 0 && relevantRecords.every(record => record.visibility === "public");
     const demandPasses = publicInference || (review.demandSupported && hasDemand);
+    const atomicClaimsPass = review.unsupportedClaims.length === 0;
     const modelFindings = [
       ...(!review.supported ? [{ code: "model-unsupported", severity: "fatal" as const, message: review.findings.join("; ") || "Model critic found insufficient evidence support." }] : []),
+      ...(!atomicClaimsPass ? [{ code: "atomic-claim-unsupported", severity: "fatal" as const,
+        message: `Unsupported prompt clauses: ${review.unsupportedClaims.join("; ")}` }] : []),
       ...(!demandPasses ? [{ code: "demand-not-entailed", severity: "fatal" as const, message: "No independently verified demand evidence entails this question." }] : []),
       ...(!review.capabilitySupported || !hasCapability ? [{ code: "capability-not-entailed", severity: "fatal" as const, message: "No independently verified capability evidence entails this question." }] : []),
       ...(!review.usable ? [{ code: "model-unusable", severity: "fatal" as const, message: review.findings.join("; ") || "Model critic found the prompt unusable." }] : []),
@@ -435,7 +502,7 @@ function applyModelReviews(
     ];
     return {
       ...candidate, evidenceIds: relevantIds,
-      accepted: candidate.accepted && review.supported && demandPasses && review.capabilitySupported && hasCapability && review.usable,
+      accepted: candidate.accepted && review.supported && atomicClaimsPass && demandPasses && review.capabilitySupported && hasCapability && review.usable,
       score: (candidate.score + review.score) / 2, findings: [...candidate.findings, ...modelFindings], semanticKey: review.semanticKey,
     };
   });

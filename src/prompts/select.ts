@@ -13,10 +13,16 @@ export function selectPrompts(candidates: ValidatedCandidate[], target = 10, pre
   const usedOpportunities = new Set<string>();
   const opportunityCounts = new Map<string, number>();
   const usedSemanticKeys = new Set<string>();
+  const usedUseCases = new Set<string>();
+  const minimumDistinctSituations = Math.min(target, 8);
+  const enforceCoreMix = pool.filter(candidate => !isPeripheral(candidate.text)).length >= minimumDistinctSituations;
+  let peripheralCount = 0;
   while (selected.length < target && pool.length > 0) {
-    let eligible = pool.filter(candidate => !usedOpportunities.has(candidate.opportunityId) &&
+    const requireNewSituation = usedUseCases.size < minimumDistinctSituations;
+    const mixAllows = (candidate: ValidatedCandidate) => !enforceCoreMix || peripheralCount < 2 || !isPeripheral(candidate.text);
+    let eligible = pool.filter(candidate => mixAllows(candidate) && (!requireNewSituation || !usedUseCases.has(useCaseKey(candidate))) && !usedOpportunities.has(candidate.opportunityId) &&
       !usedSemanticKeys.has(candidate.semanticKey ?? candidate.opportunityId) && !selected.some(other => conflicts(candidate, other)));
-    if (eligible.length === 0) eligible = pool.filter(candidate => (opportunityCounts.get(candidate.opportunityId) ?? 0) < 2 &&
+    if (eligible.length === 0) eligible = pool.filter(candidate => mixAllows(candidate) && (!requireNewSituation || !usedUseCases.has(useCaseKey(candidate))) && (opportunityCounts.get(candidate.opportunityId) ?? 0) < 2 &&
       !usedSemanticKeys.has(candidate.semanticKey ?? candidate.opportunityId) && materiallyDistinctWithinOpportunity(candidate, selected) &&
       !selected.some(other => conflicts(candidate, other)));
     if (eligible.length === 0) break;
@@ -33,9 +39,19 @@ export function selectPrompts(candidates: ValidatedCandidate[], target = 10, pre
     usedOpportunities.add(best.candidate.opportunityId);
     opportunityCounts.set(best.candidate.opportunityId, (opportunityCounts.get(best.candidate.opportunityId) ?? 0) + 1);
     usedSemanticKeys.add(best.candidate.semanticKey ?? best.candidate.opportunityId);
+    usedUseCases.add(useCaseKey(best.candidate));
+    if (isPeripheral(best.candidate.text)) peripheralCount += 1;
     pool.splice(pool.indexOf(best.candidate), 1);
   }
   return { discovery: selected.map(item => toPrompt(item, benchmarkIds)), boundaries };
+}
+
+const PERIPHERAL = /\b(?:security reports?|privacy|personally identifiable|gdpr|hipaa|ccpa|soc 2|compliance|annual plans?|volume discounts?|pricing|procurement|marketplace|(?:setup|cli|install) wizard|documentation)\b/i;
+function isPeripheral(text: string): boolean { return PERIPHERAL.test(text); }
+
+function useCaseKey(candidate: ValidatedCandidate): string {
+  return (candidate.coverage?.useCase ?? candidate.semanticKey ?? candidate.opportunityId)
+    .toLowerCase().replaceAll(/[^a-z0-9]+/g, " ").trim();
 }
 
 function materiallyDistinctWithinOpportunity(candidate: ValidatedCandidate, selected: ValidatedCandidate[]): boolean {
@@ -79,7 +95,7 @@ function conflicts(left: ValidatedCandidate, right: ValidatedCandidate): boolean
     (evidenceOverlap >= 0.3 && distinctiveOverlap >= 0.12);
 }
 
-const NAMED_FACETS = ["gitlab", "github", "jira", "slack", "pagerduty", "soc 2", "hipaa", "gdpr", "fedramp", "aws marketplace"];
+const NAMED_FACETS = ["gitlab", "github", "jira", "slack", "pagerduty", "soc 2", "hipaa", "gdpr", "fedramp", "aws marketplace", "wizard"];
 const CONCEPTS = [
   [/\b(?:ai|artificial intelligence)\b/i, /\bautomat(?:e|es|ed|ing|ion)\b/i],
   [/\bpostmortem|retrospective\b/i, /\baudit|timeline\b/i],

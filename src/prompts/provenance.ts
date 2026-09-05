@@ -7,7 +7,7 @@ export function attachPromptContext(candidates: ValidatedCandidate[], opportunit
     const opportunity = byOpportunity.get(candidate.opportunityId);
     const demand = candidate.evidenceIds.map(id => evidence.get(id)).filter((item): item is EvidenceRecord =>
       Boolean(item && (item.kind === "demand" || item.kind === "language")));
-    return { ...candidate, origin: candidate.evidenceBasis === "public-inference" ? "inferred-opportunity" : originFor(candidate.text, demand), coverage: opportunity?.coverage ?? {
+    return { ...candidate, origin: candidate.evidenceBasis === "public-inference" ? "inferred-opportunity" : originFor(candidate.text, demand), coverage: candidate.coverage ?? opportunity?.coverage ?? {
       audience: "general buyer", useCase: candidate.semanticKey?.replaceAll("-", " ") ?? "general evaluation",
       constraint: candidate.archetype === "constraint" ? "stated constraint" : "none stated", decisionStage: "evaluation",
     } };
