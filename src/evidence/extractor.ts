@@ -3,12 +3,14 @@ import { normalizeText, stableId } from "../util.js";
 import { authorityFor, lifecycleFrom, scopesFrom } from "../context/policy.js";
 import { classifyBuyerIntent } from "../context/intent.js";
 
-export const EXTRACTOR_VERSION = "evidence-v1.3.0-intent";
+export const EXTRACTOR_VERSION = "evidence-v1.4.0-page-context";
 
 const DEMAND_SOURCES = new Set(["gsc", "slack", "intercom", "crm", "calls", "mintlify", "github"]);
 // Capability is an assertion about what exists, not the presence of a product
 // noun. This distinction prevents customer requests from becoming fake features.
 const CAPABILITY_PATTERNS = /\b(shipped|released|launched|implemented|enabled|added|built|supports|provides?|offers?|includes?|integrates?|available)\b|\b(?:we|our product|the product|the platform|the api|the system|the tool) support\b/i;
+const PUBLIC_CAPABILITY_PATTERNS = /\b(?:automates?|captures?|combines?|debugs?|detects?|diagnoses?|identifies?|monitors?|observes?|profiles?|records?|resolves?|surfaces?|tracks?|traces?|visualizes?)\b/i;
+const PUBLIC_BOILERPLATE = /\b(?:explore cookbook|getting started|request (?:a )?demo|free demo|previous next|sign up|log in)\b/i;
 const DEMAND_PATTERNS = /\b(need|needs|want|wants|struggle|problem|fails?|difficult|slow|cannot|can't|search query|evaluating|requirement|criterion|because)\b/i;
 const CONSTRAINT_PATTERNS = /\b(limit|constraint|cannot|does not|unsupported|private|security|compliance|residency|latency|large|complex|sensitive)\b/i;
 const CHANGE_PATTERNS = /\b(shipped|released|deprecated|planned|investigating|changelog|version)\b/i;
@@ -19,7 +21,7 @@ export class EvidenceExtractor {
   readonly version = EXTRACTOR_VERSION;
 
   extract(artifact: SourceArtifact): EvidenceRecord[] {
-    const labels = labelsFrom(artifact.metadata);
+    const labels = labelsFrom(artifact.metadata, artifact.url);
     const sentences = splitSentences(artifact.content).slice(0, artifact.source === "web" ? 60 : 12);
     const output: EvidenceRecord[] = [];
     for (const [index, sentence] of sentences.entries()) {
@@ -60,7 +62,9 @@ function classify(sentence: string, source: SourceArtifact["source"], lifecycle:
   if (DEMAND_SOURCES.has(source) && DEMAND_PATTERNS.test(sentence)) kinds.add("demand");
   if (source === "gsc" && /\b(search query|impressions|clicks|average position)\b/i.test(sentence)) kinds.add("demand");
   if (source === "mintlify" && /\b(documentation analytics|visitors|views|searches|search)\b/i.test(sentence)) kinds.add("demand");
-  if (CAPABILITY_PATTERNS.test(sentence) && source !== "gsc" && lifecycle !== "planned" && lifecycle !== "investigating" && lifecycle !== "deprecated" && lifecycle !== "superseded") kinds.add("capability");
+  if ((CAPABILITY_PATTERNS.test(sentence) || (source === "web" && PUBLIC_CAPABILITY_PATTERNS.test(sentence))) &&
+      !(source === "web" && PUBLIC_BOILERPLATE.test(sentence)) && source !== "gsc" && lifecycle !== "planned" &&
+      lifecycle !== "investigating" && lifecycle !== "deprecated" && lifecycle !== "superseded") kinds.add("capability");
   if (CONSTRAINT_PATTERNS.test(sentence)) kinds.add("constraint");
   if (CHANGE_PATTERNS.test(sentence)) kinds.add("change");
   if (/\b(alternative|versus|vs\.?|replace|migration|evaluating vendors?)\b/i.test(sentence)) kinds.add("comparison");
@@ -68,8 +72,13 @@ function classify(sentence: string, source: SourceArtifact["source"], lifecycle:
   return [...kinds];
 }
 
-function labelsFrom(metadata: Record<string, unknown>): string[] {
+function labelsFrom(metadata: Record<string, unknown>, sourceUrl?: string): string[] {
   const labels = Array.isArray(metadata.labels) ? metadata.labels.filter((x): x is string => typeof x === "string") : [];
+  if (sourceUrl) {
+    try {
+      labels.push(...new URL(sourceUrl).pathname.split("/").filter(Boolean));
+    } catch { /* source URL is optional metadata */ }
+  }
   return [...new Set(labels.map(value => value.toLowerCase().replaceAll(/[^a-z0-9-]+/g, "-")).filter(Boolean))];
 }
 

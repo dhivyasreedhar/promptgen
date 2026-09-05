@@ -23,6 +23,20 @@ describe("EvidenceExtractor role integrity", () => {
     expect(records.map(item => item.kind)).toContain("change");
   });
 
+  it("recognizes product-action language on a public web page without applying it to private requests", () => {
+    const web = { ...artifact("web", "Monitor production errors and trace slow requests across your application."), visibility: "public" as const,
+      url: "https://example.com/product/error-monitoring/" };
+    expect(new EvidenceExtractor().extract(web).map(item => item.kind)).toContain("capability");
+    expect(new EvidenceExtractor().extract(artifact("intercom", "We need a vendor that monitors production errors across our application."))
+      .map(item => item.kind)).not.toContain("capability");
+  });
+
+  it("does not treat public navigation and demo calls to action as capabilities", () => {
+    const web = { ...artifact("web", "Explore cookbook docs and request a free demo to get started."), visibility: "public" as const,
+      url: "https://example.com/product/error-monitoring/" };
+    expect(new EvidenceExtractor().extract(web).map(item => item.kind)).not.toContain("capability");
+  });
+
   it("keeps planned work out of the capability role", () => {
     const records = new EvidenceExtractor().extract(artifact("linear", "Planned: the platform will support air-gapped deployments."));
     expect(records.map(item => item.kind)).toContain("change");

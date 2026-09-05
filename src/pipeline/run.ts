@@ -53,7 +53,7 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
   try {
     await metadata?.startRun(company, runId, startedAt, model.name);
     trace.record("run", "started", { fixtures: options.fixtures, provider: model.name, enabledSources: company.enabledSources });
-    const connectorConfig = publicFastPath ? { ...config, maxPublicPages: Math.min(config.maxPublicPages, 8) } : config;
+    const connectorConfig = publicFastPath ? { ...config, maxPublicPages: Math.min(config.maxPublicPages, 16) } : config;
     for (const connector of buildConnectors(connectorConfig, options.fixtures).filter(item => company.enabledSources.includes(item.source))) {
       let sourceCount = 0;
       let collectedCount = 0;
@@ -161,7 +161,7 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
       relevantEvidenceIds = [...new Set(opportunities.flatMap(item => item.evidenceIds))];
       metrics.evidenceRetrieved = relevantEvidenceIds.length;
       trace.record("retrieve", "public-fast-path", { publicEvidence: publicEvidence.length, opportunities: opportunities.length,
-        skipped: ["model-topic-planning", "embedding-backfill", "candidate-retrieval", "generation-backfill"] });
+        skipped: ["model-topic-planning", "embedding-backfill", "candidate-retrieval"] });
     } else {
       tracePrivacy(trace, broadEvidence, "topic-planning");
       const modelTopics = await cachedModelCall(db, trace, model.name, "plan-topics", { company, broadEvidence }, () => model.planTopics(company, broadEvidence, controller.signal));
@@ -188,8 +188,8 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
 
     const evidenceById = new Map(db.evidenceByIds(relevantEvidenceIds).map(record => [record.id, record]));
     tracePrivacy(trace, [...evidenceById.values()], "candidate-generation");
-    const generationOptions = publicFastPath ? { minCandidates: 20, maxCandidates: 20 } : undefined;
-    const generationVersion = publicFastPath ? "generate-v5-public-fast-core-mix" : "generate-v5-atomic-core-mix";
+    const generationOptions = publicFastPath ? { minCandidates: 30, maxCandidates: 30 } : undefined;
+    const generationVersion = publicFastPath ? "generate-v6-public-diverse-pages" : "generate-v5-atomic-core-mix";
     const generatedCandidates = await cachedModelCall(db, trace, model.name, generationVersion,
       { company, opportunities, generationOptions, evidence: opportunities.flatMap(item => item.evidenceIds.map(id => evidenceById.get(id))) },
       () => model.generate(company, opportunities, evidenceById, controller.signal, generationOptions));
@@ -240,22 +240,24 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
     // Diversity can make a large valid pool select fewer than ten. Retry only on
     // uncovered evidence packs, then send every backfill candidate through the
     // identical repair, deterministic validation, and independent critic gates.
-    if (!publicFastPath && selection.discovery.length < 10) {
+    if (selection.discovery.length < 10) {
       const coveredOpportunities = new Set(selection.discovery.map(item => item.opportunityId));
       const uncovered = opportunities.filter(item => !coveredOpportunities.has(item.id));
       trace.record("backfill", "started", { missing: 10 - selection.discovery.length, uncoveredOpportunityIds: uncovered.map(item => item.id) });
       if (uncovered.length > 0) {
-        const generatedBackfill = await cachedModelCall(db, trace, model.name, "generate-backfill-v2-recommendation-seeking", {
+        const publicBackfillCount = Math.max(10, Math.min(20, (10 - selection.discovery.length) * 2));
+        const backfillOptions = publicFastPath ? { minCandidates: publicBackfillCount, maxCandidates: publicBackfillCount } : undefined;
+        const generatedBackfill = await cachedModelCall(db, trace, model.name, publicFastPath ? "generate-backfill-v3-public" : "generate-backfill-v2-recommendation-seeking", {
           company, missing: 10 - selection.discovery.length, opportunities: uncovered,
-          evidence: uncovered.flatMap(item => item.evidenceIds.map(id => evidenceById.get(id))),
-        }, () => model.generate(company, uncovered, evidenceById, controller.signal));
+          evidence: uncovered.flatMap(item => item.evidenceIds.map(id => evidenceById.get(id))), backfillOptions,
+        }, () => model.generate(company, uncovered, evidenceById, controller.signal, backfillOptions));
         const existingIds = new Set(candidates.map(item => item.id));
         const rawBackfillCandidates = generatedBackfill.filter(item => !existingIds.has(item.id));
         const backfillNeeds: EvidenceNeed[] = rawBackfillCandidates.map(candidate => ({
           id: `backfill:${candidate.id}`, query: candidate.text, kinds: ["demand", "language", "capability", "constraint"],
           reason: "Backfill candidate-specific entailment and conflict check", preferredSources: ["web", "github", "gsc", "intercom", "slack", "calls", "linear"],
         }));
-        const backfillPacks = await retrieve(backfillNeeds);
+        const backfillPacks = publicFastPath ? [] : await retrieve(backfillNeeds);
         const backfillPackById = new Map(backfillPacks.map(pack => [pack.need.id.slice("backfill:".length), pack]));
         for (const pack of backfillPacks) {
           for (const item of pack.records) evidenceById.set(item.evidence.id, item.evidence);
@@ -299,7 +301,7 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
     if (selection.discovery.length < 10) missingEvidence.unshift({
       need: `${10 - selection.discovery.length} additional supported discovery opportunities`,
       reason: "The validated candidate pool could not honestly support ten distinct prompts.",
-      recommendedSources: ["gsc", "intercom", "slack", "calls", "github"],
+      recommendedSources: publicFastPath ? ["web", "github"] : ["gsc", "intercom", "slack", "calls", "github"],
     });
     const status = selection.discovery.length === 10 ? "complete" as const : "insufficient_evidence" as const;
     const coverage = summarizeCoverage(selection.discovery);
@@ -443,9 +445,16 @@ export function publicOpportunities(company: CompanyConfig, evidence: EvidenceRe
   const companyTerms = new Set(tokenize(`${company.name} ${company.domain}`));
   const capabilities = evidence.filter(record => record.kind === "capability" || (record.kind === "change" && record.lifecycle === "confirmed"))
     .sort((left, right) => ((right.authority ?? 0) + right.confidence) - ((left.authority ?? 0) + left.confidence));
+  const capabilitiesByArtifact = new Map<string, EvidenceRecord[]>();
+  for (const record of capabilities) capabilitiesByArtifact.set(record.artifactId, [...(capabilitiesByArtifact.get(record.artifactId) ?? []), record]);
+  const diversifiedCapabilities: EvidenceRecord[] = [];
+  const artifactQueues = [...capabilitiesByArtifact.values()];
+  for (let index = 0; artifactQueues.some(records => index < records.length); index += 1) {
+    for (const records of artifactQueues) if (records[index]) diversifiedCapabilities.push(records[index]!);
+  }
   const grouped = new Map<string, EvidenceRecord[]>();
   let peripheralCount = 0;
-  for (const record of capabilities) {
+  for (const record of diversifiedCapabilities) {
     if (PERIPHERAL_PUBLIC_CLAIM.test(record.claim)) {
       if (peripheralCount >= 4) continue;
       peripheralCount += 1;

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { discoverOpportunities } from "../src/opportunities/discover.js";
 import { validateCandidates } from "../src/prompts/validate.js";
 import { PublicWebConnector, rankPublicUrls } from "../src/connectors/web.js";
+import { publicOpportunities } from "../src/pipeline/run.js";
 import type { CompanyConfig, EvidencePack, EvidenceRecord, PromptCandidate } from "../src/types.js";
 
 const company: CompanyConfig = { id: "public-co", name: "Public Co", domain: "public.co", category: "product analytics", githubOrganizations: [], enabledSources: ["web"] };
@@ -42,6 +43,23 @@ describe("public-only prompt path", () => {
     const result = validateCandidates(company, [candidate], [opportunity], new Map([[evidence.id, evidence]]))[0]!;
     expect(result.accepted).toBe(true);
     expect(result.findings.map(item => item.code)).not.toContain("missing-demand");
+  });
+
+  it("diversifies public opportunities across source pages before filling the opportunity budget", () => {
+    const crowded = Array.from({ length: 30 }, (_, index) => publicCapability({
+      id: `crowded-${index}`, artifactId: "crowded-page", claim: `The platform provides crowded feature number ${index} for analytics teams`,
+      quote: `The platform provides crowded feature number ${index} for analytics teams`, tags: [`topic${index}`],
+    }));
+    const primary = publicCapability({
+      id: "primary-error-monitoring", artifactId: "primary-product-page",
+      claim: "The platform provides production error monitoring with stack traces",
+      quote: "The platform provides production error monitoring with stack traces", tags: ["error-monitoring"],
+    });
+
+    const opportunities = publicOpportunities(company, [...crowded, primary]);
+
+    expect(opportunities).toHaveLength(24);
+    expect(opportunities.some(item => item.evidenceIds.includes(primary.id))).toBe(true);
   });
 
   it("does not allow private evidence to bypass observed-demand validation", () => {
