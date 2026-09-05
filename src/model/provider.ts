@@ -134,7 +134,9 @@ abstract class StructuredPromptModel implements PromptModel {
     const opportunityById = new Map(opportunities.map(item => [item.id, item]));
     const allowedEvidenceIds = new Set(evidence.keys());
     const payload = opportunities.slice(0, 30).map(item => ({
-      id: item.id, topic: item.topic, buyerProblem: item.buyerProblem, segment: item.segment,
+      id: item.id, topic: item.topic,
+      // Private free text must not bypass the record-level privacy transform.
+      ...(item.evidenceBasis === "public-inference" ? { buyerProblem: item.buyerProblem, segment: item.segment } : {}),
       demandScore: item.demandScore, capabilityScore: item.capabilityScore, evidenceBasis: item.evidenceBasis ?? "observed-demand",
       evidence: item.evidenceIds.slice(0, 8).map(id => {
         const record = evidence.get(id);
@@ -154,14 +156,21 @@ abstract class StructuredPromptModel implements PromptModel {
         return {
           id: stableId(company.id, "candidate", item.opportunityId, item.text, String(index)), opportunityId: item.opportunityId,
           text: item.text.trim(), archetype: item.archetype, evidenceIds: [...new Set(item.evidenceIds)], version: 1,
-          evidenceBasis, coverage: evidenceBasis === "public-inference" ? { ...item.coverage, audience: "general buyer" } : item.coverage,
+          evidenceBasis,
+          generationMethod: "model",
+          coverage: {
+            audience: "general buyer",
+            useCase: opportunityById.get(item.opportunityId)?.topic.replaceAll("-", " ") ?? item.coverage.useCase,
+            constraint: "none stated",
+            decisionStage: opportunityById.get(item.opportunityId)?.coverage?.decisionStage ?? item.coverage.decisionStage,
+          },
         };
       });
   }
 
   async review(company: CompanyConfig, candidates: PromptCandidate[], evidence: Map<string, EvidenceRecord>, signal?: AbortSignal): Promise<ModelReview[]> {
     if (candidates.length === 0) return [];
-    const system = `You are an independent, strict evaluator for AI brand-recommendation tracking prompts. First decompose each question into every material claim: audience, buyer need, capability, integration, constraint, scale or performance promise, pricing property, purchase channel, and modality. Treat the supplied coverage audience, use case, constraint, and decision stage as claims too. Check every claim against the exact cited excerpts, not merely the company's broad category. Put each unsupported or only-implied prompt clause in unsupportedClaims using a short verbatim phrase; prefix unsupported coverage labels with "coverage:". supported must be false whenever unsupportedClaims is non-empty. Return in relevantEvidenceIds only cited IDs that directly support at least one material claim. demandSupported=true only if relevant demand or customer-language evidence demonstrates that buyers actually have this need. capabilitySupported=true only if relevant current, confirmed capability evidence demonstrates that the tracked company can credibly address the complete capability claim. For evidenceBasis=observed-demand, supported requires both demandSupported and capabilitySupported. For evidenceBasis=public-inference, supported may be true with demandSupported=false only when the prompt is a conservative, plausible evaluation question logically derived from public capability evidence and introduces no unsupported audience, constraint, integration, purchase channel, performance, pricing, or modality. Planned, investigating, deprecated, superseded, expired, inaccessible, or never-expose evidence cannot establish capability. usable=true only when the question sounds like a plausible real buyer query, gives multiple vendors a fair chance, and is likely to produce a recommendation for the company's primary product category. Vendor paperwork, public reports, documentation availability, setup wizards, generic compliance guidance, and marketing assets are not useful standalone tracking prompts. Questions asking only how important something is, why it matters, how to implement it, or what process to follow are unusable. Assign a concise kebab-case semanticKey describing the underlying buyer opportunity; semantically equivalent prompts must receive the same key. Score 0-1. Do not reward fluent wording when evidence is weak.`;
+    const system = `You are an independent, strict evaluator for AI brand-recommendation tracking prompts. First decompose each question into every material claim: audience, buyer need, capability, integration, constraint, scale or performance promise, pricing property, purchase channel, and modality. Treat specific supplied coverage values as claims, but "general buyer", "none stated", and "evaluation" are neutral labels and do not require separate evidence. Check every claim against the exact cited excerpts, not merely the company's broad category. If the supplied category is generic, infer the company's primary product category from repeated capability evidence; an integration or adjacent feature is not itself the primary category. De-identified and aggregate-only evidence is intentionally represented by an authorized safe summary plus tags: it directly supports a generalized need or capability matching that topic and kind, but never a named customer, metric, integration, performance promise, or unstated constraint. Demand evidence establishes that buyers have a need; it does not need to mention the tracked company and normally should not, because discovery prompts must be brand-neutral. Capability evidence separately establishes that the tracked company can credibly serve that need. Put each unsupported or only-implied prompt clause in unsupportedClaims using a short verbatim phrase; prefix unsupported coverage labels with "coverage:". supported must be false whenever unsupportedClaims is non-empty. Return all cited IDs that directly support material claims; for observed demand include both the strongest demand ID and capability ID when they apply. demandSupported=true only if relevant demand or customer-language evidence demonstrates that buyers actually have this need. capabilitySupported=true only if relevant current, confirmed capability evidence demonstrates that the tracked company can credibly address the complete capability claim. For evidenceBasis=observed-demand, supported requires both demandSupported and capabilitySupported. For evidenceBasis=public-inference, supported may be true with demandSupported=false only when the prompt is a conservative, plausible evaluation question logically derived from public capability evidence and introduces no unsupported audience, constraint, integration, purchase channel, performance, pricing, or modality. Planned, investigating, deprecated, superseded, expired, inaccessible, or never-expose evidence cannot establish capability. usable=true only when the question sounds like a plausible real buyer query, gives multiple vendors a fair chance, and is likely to produce a recommendation for the company's primary product category. Vendor paperwork, public reports, documentation availability, setup wizards, generic compliance guidance, and marketing assets are not useful standalone tracking prompts. Questions asking only how important something is, why it matters, how to implement it, or what process to follow are unusable. Assign a concise kebab-case semanticKey describing the underlying buyer opportunity; semantically equivalent prompts must receive the same key. Score 0-1. Do not reward fluent wording when evidence is weak.`;
     const batches: PromptCandidate[][] = [];
     for (let offset = 0; offset < candidates.length; offset += 8) batches.push(candidates.slice(offset, offset + 8));
     const reviews: ModelReview[] = [];
@@ -357,10 +366,13 @@ class LocalPromptModel implements PromptModel {
   }
   async generate(company: CompanyConfig, opportunities: Opportunity[]): Promise<PromptCandidate[]> {
     const prompts = localPrompts[company.id] ?? {};
-    return opportunities.flatMap(opportunity => (prompts[opportunity.topic] ?? []).map((text, index) => ({
+    return opportunities.flatMap(opportunity => (prompts[opportunity.topic] ?? [
+      `Which ${localCategoryPhrase(company.category)} are best for ${opportunity.topic.replaceAll("-", " ")}?`,
+    ]).map((text, index) => ({
       id: stableId(company.id, "local", opportunity.id, text), opportunityId: opportunity.id, text,
       archetype: index % 2 === 0 ? "category" as const : "workflow" as const,
       evidenceIds: opportunity.evidenceIds.slice(0, 6), version: 1, evidenceBasis: opportunity.evidenceBasis ?? "observed-demand",
+      generationMethod: "model",
     })));
   }
   async review(_company: CompanyConfig, candidates: PromptCandidate[]): Promise<ModelReview[]> {
@@ -368,6 +380,12 @@ class LocalPromptModel implements PromptModel {
       relevantEvidenceIds: candidate.evidenceIds, usable: true, semanticKey: candidate.opportunityId, score: 0.85,
       findings: [], unsupportedClaims: [] }));
   }
+}
+
+function localCategoryPhrase(category: string): string {
+  if (/^company or product$/i.test(category)) return "software platforms";
+  if (/platform$/i.test(category)) return category.replace(/platform$/i, "platforms");
+  return `${category} tools`;
 }
 
 const topicPlanSchema = z.object({ topics: z.array(z.object({ slug: z.string().regex(/^[a-z0-9-]+$/), query: z.string().min(3).max(200) })).min(1).max(20) });

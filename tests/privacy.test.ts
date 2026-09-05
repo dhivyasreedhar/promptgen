@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { redactedEvidenceExcerptForUi, transformEvidenceForExternal } from "../src/privacy/transform.js";
+import { redactedEvidenceExcerptForUi, safeEmbeddingText, transformEvidenceForExternal } from "../src/privacy/transform.js";
 import type { EvidenceRecord } from "../src/types.js";
 
 function record(overrides: Partial<EvidenceRecord> = {}): EvidenceRecord {
@@ -26,5 +26,16 @@ describe("external-model privacy boundary", () => {
     const excerpt = redactedEvidenceExcerptForUi(record()).text;
     expect(excerpt).toContain("needs");
     expect(excerpt).not.toMatch(/Alice|Acme|example\.com|ORBIT|42/);
+  });
+
+  it("embeds only the authorized private abstraction", () => {
+    const text = safeEmbeddingText(record());
+    expect(text).toContain("enterprise-security");
+    expect(text).not.toMatch(/Alice|Acme|example\.com|ORBIT|42/);
+  });
+
+  it("redacts accidental identifiers before embedding public claims", () => {
+    const text = safeEmbeddingText(record({ visibility: "public", safeUse: "public", claim: "Contact alice@example.com about API key sk-secretsecret123" }));
+    expect(text).not.toMatch(/alice@example\.com|sk-secretsecret123/);
   });
 });

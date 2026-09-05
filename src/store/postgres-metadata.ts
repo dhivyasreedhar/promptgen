@@ -200,7 +200,8 @@ export class PostgresMetadataStore implements AsyncDisposable {
   async syncArtifacts(company: CompanyConfig, artifacts: SourceArtifact[], hashes: Map<string, string>, objectKeys = new Map<string, string>()): Promise<void> {
     if (artifacts.length === 0) return;
     for (let offset = 0; offset < artifacts.length; offset += 500) {
-      const batch = artifacts.slice(offset, offset + 500);
+      const batch = [...new Map(artifacts.slice(offset, offset + 500)
+        .map(item => [`${item.source}\u0000${item.externalId}\u0000${item.version}`, item])).values()];
       await this.transaction(async client => {
         const companyId = await this.ensureCompany(client, company);
         const rows = batch.map(item => ({ id: stableUuid("artifact", this.tenantId, company.id, item.id), local_key: item.id,
@@ -287,12 +288,15 @@ export class PostgresMetadataStore implements AsyncDisposable {
     });
   }
 
-  async evidenceMissingEmbeddings(companyKey: string, provider: string, model: string, limit: number): Promise<Array<{ id: string; claim: string }>> {
-    return this.transaction(async client => (await client.query<{ id: string; claim: string }>(`SELECT e.id::text,e.claim FROM evidence e
+  async evidenceMissingEmbeddings(companyKey: string, provider: string, model: string, limit: number): Promise<Array<{ id: string; claim: string; source: EvidenceRecord["source"]; kind: EvidenceRecord["kind"]; safeUse: EvidenceRecord["safeUse"]; tags: string[]; buyerIntent?: EvidenceRecord["buyerIntent"] }>> {
+    return this.transaction(async client => (await client.query<{ id: string; claim: string; source: EvidenceRecord["source"]; kind: EvidenceRecord["kind"]; safe_use: EvidenceRecord["safeUse"]; tags: string[]; buyer_intent: EvidenceRecord["buyerIntent"] | null }>(`SELECT e.id::text,e.claim,e.source,e.kind,e.safe_use,e.tags,e.buyer_intent FROM evidence e
       JOIN companies c ON c.id=e.company_id AND c.tenant_id=e.tenant_id JOIN artifacts a ON a.id=e.artifact_id
       LEFT JOIN evidence_embeddings ee ON ee.tenant_id=e.tenant_id AND ee.evidence_id=e.id AND ee.provider=$3 AND ee.model=$4
       WHERE e.tenant_id=$1 AND c.external_key=$2 AND ee.evidence_id IS NULL AND a.is_current AND a.deleted_at IS NULL
-      AND e.safe_use<>'never-expose' ORDER BY e.occurred_at DESC LIMIT $5`, [this.tenantId, companyKey, provider, model, limit])).rows);
+      AND e.safe_use<>'never-expose' ORDER BY e.occurred_at DESC LIMIT $5`, [this.tenantId, companyKey, provider, model, limit])).rows.map(row => ({
+        id: row.id, claim: row.claim, source: row.source, kind: row.kind, safeUse: row.safe_use, tags: row.tags,
+        ...(row.buyer_intent ? { buyerIntent: row.buyer_intent } : {}),
+      })));
   }
 
   async contextCounts(companyKey: string): Promise<{ artifacts: number; evidence: number }> {
@@ -498,6 +502,7 @@ function rowToJob(row: Record<string, unknown>): RunJob {
   return {
     id: String(row.id), companyId: payload.company.id, status: String(row.status) as RunJob["status"], company: payload.company,
     fixtures: Boolean(payload.fixtures), createdAt: new Date(String(row.created_at)).toISOString(),
+    ...(typeof row.attempts === "number" ? { attempts: row.attempts } : {}),
     ...(row.started_at ? { startedAt: new Date(String(row.started_at)).toISOString() } : {}),
     ...(row.completed_at ? { completedAt: new Date(String(row.completed_at)).toISOString() } : {}),
     ...(result ? { result } : {}), ...(row.error ? { error: String(row.error) } : {}),

@@ -6,7 +6,7 @@ import { companyById } from "./config.js";
 import { runCompany } from "./pipeline/run.js";
 import { EvidenceDatabase } from "./store/database.js";
 import { PostgresMetadataStore } from "./store/postgres-metadata.js";
-import type { CompanyConfig, EvidenceRecord, FeedbackReason, RunResult, SourceArtifact } from "./types.js";
+import type { CompanyConfig, EvidenceRecord, FeedbackReason, RunJob, RunResult, SourceArtifact } from "./types.js";
 import { log, normalizeText } from "./util.js";
 import { operationalMetrics } from "./operations/metrics.js";
 import { redactedEvidenceExcerptForUi, safePreviewForUi } from "./privacy/transform.js";
@@ -41,8 +41,10 @@ export async function serve(config: AppConfig, fixtures: boolean): Promise<void>
     server.once("error", reject);
     server.listen(config.port, config.host, () => resolve());
   });
-  void processJobs(config, hosted);
-  const queueTick = setInterval(() => void processJobs(config, hosted), 5_000);
+  const triggerJobs = () => void processJobs(config, hosted)
+    .catch(error => log("error", "job.worker-failed", { error: errorMessage(error) }));
+  triggerJobs();
+  const queueTick = setInterval(triggerJobs, 5_000);
   queueTick.unref();
   const schedulerOwner = `${process.pid}:${randomUUID()}`;
   const schedulerTick = config.schedulerEnabled ? setInterval(() => {
@@ -199,7 +201,7 @@ async function route(config: AppConfig, fixtures: boolean, hosted: PostgresMetad
     using db = new EvidenceDatabase(config.dbPath);
     const input = { id: randomUUID(), company, fixtures, createdAt: new Date().toISOString() };
     const job = hosted ? await hosted.enqueueJob(input) : db.enqueueJob(input);
-    void processJobs(config, hosted);
+    void processJobs(config, hosted).catch(error => log("error", "job.worker-failed", { error: errorMessage(error) }));
     json(response, 202, { jobId: job.id, companyId: job.companyId, status: job.status }); return;
   }
   if (request.method === "POST" && url.pathname === "/api/run-domain") {
@@ -213,7 +215,7 @@ async function route(config: AppConfig, fixtures: boolean, hosted: PostgresMetad
     // optional CLI flag; unknown domains remain public-only.
     const input = { id: randomUUID(), company, fixtures: Boolean(configured) || fixtures, createdAt: new Date().toISOString() };
     const job = hosted ? await hosted.enqueueJob(input) : db.enqueueJob(input);
-    void processJobs(config, hosted);
+    void processJobs(config, hosted).catch(error => log("error", "job.worker-failed", { error: errorMessage(error) }));
     json(response, 202, { jobId: job.id, companyId: job.companyId, status: job.status }); return;
   }
   if (request.method === "GET" && (url.pathname === "/" || url.pathname === "/index.html" || url.pathname === "/prompts")) {
@@ -228,41 +230,52 @@ async function route(config: AppConfig, fixtures: boolean, hosted: PostgresMetad
 async function processJobs(config: AppConfig, hosted?: PostgresMetadataStore): Promise<void> {
   if (processing) return;
   processing = true;
-  const owner = `${process.pid}:${randomUUID()}`;
   try {
     for (;;) {
-      let job;
-      {
+      const claimed: Array<{ job: RunJob; owner: string }> = [];
+      for (let index = 0; index < config.jobConcurrency; index += 1) {
+        const owner = `${process.pid}:${randomUUID()}`;
         using db = new EvidenceDatabase(config.dbPath);
-        job = hosted ? await hosted.claimJob(owner, new Date(), 120_000) : db.claimJob(owner, new Date(), 120_000);
+        const job = hosted ? await hosted.claimJob(owner, new Date(), 120_000) : db.claimJob(owner, new Date(), 120_000);
+        if (!job) break;
+        claimed.push({ job, owner });
       }
-      if (!job) break;
-      const controller = new AbortController();
-      const renew = setInterval(() => {
-        using db = new EvidenceDatabase(config.dbPath);
-        if (hosted) void hosted.renewJobLease(job.id, owner, new Date(), 120_000).catch(error => log("error", "job.lease-renewal-failed", { jobId: job.id, error: errorMessage(error) }));
-        else db.renewJobLease(job.id, owner, new Date(), 120_000);
-      }, 30_000);
-      renew.unref();
-      const cancellation = setInterval(() => {
-        using db = new EvidenceDatabase(config.dbPath);
-        if (hosted) void hosted.isCancellationRequested(job.id).then(cancelled => { if (cancelled) controller.abort(new Error("Job cancellation requested")); })
-          .catch(error => log("error", "job.cancellation-check-failed", { jobId: job.id, error: errorMessage(error) }));
-        else if (db.isCancellationRequested(job.id)) controller.abort(new Error("Job cancellation requested"));
-      }, 1_000);
-      cancellation.unref();
-      try {
-        const result = await runCompany(config, job.company, { fixtures: job.fixtures, signal: controller.signal });
-        using db = new EvidenceDatabase(config.dbPath);
-        if (hosted) await hosted.finishJob(job.id, owner, result);
-        else db.finishJob(job.id, owner, result);
-      } finally {
-        clearInterval(renew);
-        clearInterval(cancellation);
-      }
+      if (claimed.length === 0) break;
+      const completed = await Promise.allSettled(claimed.map(item => processClaimedJob(config, hosted, item.job, item.owner)));
+      completed.forEach((result, index) => {
+        if (result.status === "rejected") log("error", "job.execution-failed", {
+          jobId: claimed[index]?.job.id, error: errorMessage(result.reason), recovery: "lease-retry",
+        });
+      });
     }
   } finally {
     processing = false;
+  }
+}
+
+async function processClaimedJob(config: AppConfig, hosted: PostgresMetadataStore | undefined, job: RunJob, owner: string): Promise<void> {
+  const controller = new AbortController();
+  const renew = setInterval(() => {
+    using db = new EvidenceDatabase(config.dbPath);
+    if (hosted) void hosted.renewJobLease(job.id, owner, new Date(), 120_000).catch(error => log("error", "job.lease-renewal-failed", { jobId: job.id, error: errorMessage(error) }));
+    else db.renewJobLease(job.id, owner, new Date(), 120_000);
+  }, 30_000);
+  renew.unref();
+  const cancellation = setInterval(() => {
+    using db = new EvidenceDatabase(config.dbPath);
+    if (hosted) void hosted.isCancellationRequested(job.id).then(cancelled => { if (cancelled) controller.abort(new Error("Job cancellation requested")); })
+      .catch(error => log("error", "job.cancellation-check-failed", { jobId: job.id, error: errorMessage(error) }));
+    else if (db.isCancellationRequested(job.id)) controller.abort(new Error("Job cancellation requested"));
+  }, 1_000);
+  cancellation.unref();
+  try {
+    const result = await runCompany(config, job.company, { fixtures: job.fixtures, signal: controller.signal });
+    using db = new EvidenceDatabase(config.dbPath);
+    if (hosted) await hosted.finishJob(job.id, owner, result);
+    else db.finishJob(job.id, owner, result);
+  } finally {
+    clearInterval(renew);
+    clearInterval(cancellation);
   }
 }
 
@@ -278,6 +291,7 @@ async function checkReadiness(config: AppConfig, hosted?: PostgresMetadataStore)
     catch { checks.postgres = "unavailable"; }
   } else checks.postgres = "not-configured";
   if (config.embeddingProvider === "disabled") checks.embeddings = "disabled";
+  else if (config.embeddingProvider === "openai") checks.embeddings = config.openaiApiKey ? `configured:${config.openaiEmbeddingModel}` : "missing-openai-key";
   else {
     try {
       let response = await fetch(new URL("/api/tags", config.ollamaUrl), { signal: AbortSignal.timeout(2_000) });
@@ -410,7 +424,7 @@ async function parseApiResponse(response,fallback){const text=await response.tex
 async function load(){const response=await fetch('/api/runs');state=await parseApiResponse(response,'Could not load recorded runs');const recorded=[...new Map(state.runs.map(run=>[cleanDomain(run.domain),run])).values()];chips.innerHTML=recorded.map(run=>'<button class="domain-chip" data-domain="'+escapeHtml(run.domain)+'">'+escapeHtml(run.domain)+'</button>').join(' ');document.querySelectorAll('[data-domain]').forEach(button=>button.onclick=()=>showRecorded(button.dataset.domain));}
 function showRecorded(domain){const normalized=cleanDomain(domain);const run=state.runs.find(item=>cleanDomain(item.domain)===normalized);input.value=domain;if(run){render(run);return}const savedJob=sessionStorage.getItem('promptgen-job:'+normalized);if(savedJob){resumeJob(normalized,savedJob);return}showLanding(false);showError('No saved analysis exists for this domain yet. Enter it above and choose Find prompts to start one.')}
 function showLanding(push=true){stopProgress();activeRun=null;shell.classList.remove('results-mode');progress.classList.remove('visible');results.classList.remove('visible');showError('');if(push)history.pushState({},'', '/');window.scrollTo({top:0,behavior:'smooth'})}
-function startProgress(domain,jobId){activeJobId=jobId;progressPhase='queued';progressStartedAt=Date.now();progressDomain.textContent=domain;progress.classList.add('visible');results.classList.remove('visible');clearInterval(progressTimer);const update=()=>{const seconds=Math.floor((Date.now()-progressStartedAt)/1000);progressElapsed.textContent=seconds+'s elapsed';progressMessage.textContent=progressPhase==='queued'?'Waiting for the current analysis to finish.':seconds<12?'Reading the highest-value sources.':seconds<35?'Building distinct buyer situations.':seconds<60?'Checking every claim against its sources.':'Deep evidence validation is still running; this page will update when it finishes.'};update();progressTimer=setInterval(update,1000)}
+function startProgress(domain,jobId){activeJobId=jobId;progressPhase='queued';progressStartedAt=Date.now();progressDomain.textContent=domain;progress.classList.add('visible');results.classList.remove('visible');clearInterval(progressTimer);const update=()=>{const seconds=Math.floor((Date.now()-progressStartedAt)/1000);progressElapsed.textContent=seconds+'s elapsed';progressMessage.textContent=progressPhase==='queued'?'Waiting for an analysis worker.':seconds<12?'Reading the highest-value sources.':seconds<35?'Building distinct buyer situations.':seconds<60?'Checking every claim against its sources.':'Deep evidence validation is still running; this page will update when it finishes.'};update();progressTimer=setInterval(update,1000)}
 function updateProgressPhase(status){if(status==='running'&&progressPhase!=='running'){progressPhase='running';progressStartedAt=Date.now()}}
 function stopProgress(){clearInterval(progressTimer);progressTimer=null;activeJobId=null;progress.classList.remove('visible')}
 function promptEvidence(prompt,run){const seen=new Set();const unique=prompt.evidenceIds.map(id=>run.evidence&&run.evidence[id]).filter(Boolean).filter(record=>{const key=record.artifactId||record.sourceLocator;if(seen.has(key))return false;seen.add(key);return true});const demand=unique.filter(record=>record.kind==='demand'||record.kind==='language').slice(0,2);const fit=unique.filter(record=>record.kind!=='demand'&&record.kind!=='language').slice(0,2);const selected=[...demand,...fit];return [...selected,...unique.filter(record=>!selected.includes(record))].slice(0,4)}
@@ -423,16 +437,16 @@ function openPromptDialog(mode,prompt){dialogMode=mode;dialogPrompt=prompt||null
 async function requestJson(url,options){const response=await fetch(url,options);return parseApiResponse(response,'Could not complete the request')}
 async function refreshActive(){const domain=activeRun&&activeRun.domain;await load();if(domain)showRecorded(domain)}
 function render(run){
-  stopProgress();activeRun=run;sessionStorage.removeItem('promptgen-job:'+cleanDomain(run.domain));shell.classList.add('results-mode');history.replaceState({domain:run.domain},'', '/prompts?domain='+encodeURIComponent(run.domain));results.classList.add('visible');const discovery=run.discoveryPrompts||[],benchmarks=run.benchmarkPrompts||[];const benchmarkKeys=new Set(benchmarks.map(p=>p.semanticKey||p.id));const prompts=[...benchmarks,...discovery.filter(p=>!benchmarkKeys.has(p.semanticKey||p.id))].slice(0,10);const status=String(run.status||'').replaceAll('_',' ');const hasPrivate=Object.values(run.evidence||{}).some(record=>record.visibility!=='public');
+  stopProgress();activeRun=run;sessionStorage.removeItem('promptgen-job:'+cleanDomain(run.domain));shell.classList.add('results-mode');history.replaceState({domain:run.domain},'', '/prompts?domain='+encodeURIComponent(run.domain));results.classList.add('visible');const discovery=run.discoveryPrompts||[],benchmarks=run.benchmarkPrompts||[];const benchmarkKeys=new Set(benchmarks.map(p=>p.semanticKey||p.id));const prompts=[...benchmarks,...discovery.filter(p=>!benchmarkKeys.has(p.semanticKey||p.id))].slice(0,10);const status=String(run.status||'').replaceAll('_',' ');const hasPrivate=run.contextMode==='connected'||Object.values(run.evidence||{}).some(record=>record.visibility!=='public');
   const unhealthySource=(run.sourceHealth||[]).find(source=>source.status==='degraded'||source.status==='empty');const emptyReason=unhealthySource?'We could not read enough public content from this domain. Retry the analysis; if it persists, the site may block automated access.':(run.missingEvidence&&run.missingEvidence[0]&&run.missingEvidence[0].reason)||run.error||'More evidence is required.';
   const cards=prompts.length?'<div class="prompt-list">'+prompts.map((prompt,index)=>'<article class="prompt"><div class="prompt-main"><div class="number">'+(index+1)+'</div><div><div class="prompt-text">'+escapeHtml(prompt.text)+'</div><div class="prompt-origin">'+escapeHtml(originLabel(prompt))+(prompt.set==='benchmark'?' · <span class="benchmark-label">Benchmark</span>':'')+'</div></div><button class="evidence-toggle" data-evidence="evidence-'+index+'">Why this prompt · '+promptEvidence(prompt,run).length+'</button></div><div class="evidence" id="evidence-'+index+'">'+evidenceHtml(prompt,run)+'</div></article>').join('')+'</div>':'<div class="empty"><strong>No prompt set was fabricated.</strong><br>'+escapeHtml(emptyReason)+'</div>';
   const coverage=run.coverage?'<div class="empty coverage-summary"><strong>'+run.coverage.useCases.length+' distinct buying situations.</strong></div>':'';
-  const updated=formatDate(run.completedAt);const contextLabel=hasPrivate?'Public + connected context':'Public sources';
-  results.innerHTML='<button class="back-home" id="back-home">← New domain</button><div class="result-head"><div><div class="eyebrow">Prompts worth tracking</div><h2>'+escapeHtml(run.companyName)+'</h2><div class="meta"><span class="pill '+escapeHtml(run.status)+'">'+escapeHtml(status)+'</span><span>'+prompts.length+' prompts</span><span>'+contextLabel+'</span><span>Updated '+escapeHtml(updated)+'</span></div></div><div><button class="refresh add-prompt" id="add-prompt">+ Add prompt</button> <button class="refresh" id="refresh">Run again</button></div></div>'+coverage+'<details class="diagnostics"><summary>Technical details</summary><button class="refresh" id="trace">Load run trace</button><div id="trace-summary"></div></details>'+cards;
-  document.querySelector('#back-home').onclick=()=>showLanding();document.querySelector('#refresh').onclick=()=>analyze(run.domain);document.querySelector('#add-prompt').onclick=()=>openPromptDialog('add');document.querySelector('#trace').onclick=async()=>{const panel=document.querySelector('#trace-summary');panel.innerHTML='<div class="empty">Loading trace…</div>';try{const response=await fetch('/api/runs/'+encodeURIComponent(run.runId)+'/trace');const trace=await parseApiResponse(response,'Trace unavailable');const failures=(trace.sourceFailures||[]).map(item=>escapeHtml(item.source)+': '+escapeHtml(item.error||'failed')).join(' · ')||'none';panel.innerHTML='<div class="empty"><strong>'+trace.totalEvents+' trace events · '+Math.round(trace.durationMs/1000)+'s</strong><br>Stages: '+Object.entries(trace.stages).map(([key,value])=>escapeHtml(key)+': '+value).join(' · ')+'<br>Source failures: '+failures+'<br>Reconciliation: '+(Object.entries(trace.reconciliation).map(([key,value])=>escapeHtml(key)+': '+value).join(' · ')||'none')+'<br>Privacy transformations: '+(trace.privacyTransformations||[]).length+' inspectable records (hashes + rules, no raw private text)<br>Top rejections: '+(trace.rejectionReasons.map(item=>escapeHtml(item[0])+': '+item[1]).join(' · ')||'none')+'</div>'}catch(error){panel.innerHTML='<div class="empty">'+escapeHtml(error.message)+'</div>'}};
+  const updated=formatDate(run.completedAt);const contextLabel=hasPrivate?'Public + connected context':'Public sources';const version=run.buildVersion?' · build '+escapeHtml(run.buildVersion.slice(0,7)):'';
+  results.innerHTML='<button class="back-home" id="back-home">← New domain</button><div class="result-head"><div><div class="eyebrow">Prompts worth tracking</div><h2>'+escapeHtml(run.companyName)+'</h2><div class="meta"><span class="pill '+escapeHtml(run.status)+'">'+escapeHtml(status)+'</span><span>'+prompts.length+' prompts</span><span>'+contextLabel+'</span><span>Updated '+escapeHtml(updated)+version+'</span></div></div><div><button class="refresh add-prompt" id="add-prompt">+ Add prompt</button> <button class="refresh" id="refresh">Run again</button></div></div>'+coverage+'<details class="diagnostics"><summary>Technical details</summary><button class="refresh" id="trace">Load run trace</button><div id="trace-summary"></div></details>'+cards;
+  document.querySelector('#back-home').onclick=()=>showLanding();document.querySelector('#refresh').onclick=()=>analyze(run.domain);document.querySelector('#add-prompt').onclick=()=>openPromptDialog('add');document.querySelector('#trace').onclick=async()=>{const panel=document.querySelector('#trace-summary');panel.innerHTML='<div class="empty">Loading trace…</div>';try{const response=await fetch('/api/runs/'+encodeURIComponent(run.runId)+'/trace');const trace=await parseApiResponse(response,'Trace unavailable');const failures=(trace.sourceFailures||[]).map(item=>escapeHtml(item.source)+': '+escapeHtml(item.error||'failed')).join(' · ')||'none';const modelTimes=(trace.modelDurations||[]).map(item=>escapeHtml(item.operation)+': '+Math.round(item.durationMs/1000)+'s').join(' · ')||'none';panel.innerHTML='<div class="empty"><strong>'+trace.totalEvents+' trace events · '+Math.round(trace.durationMs/1000)+'s</strong><br>Model calls: '+modelTimes+'<br>Stages: '+Object.entries(trace.stages).map(([key,value])=>escapeHtml(key)+': '+value).join(' · ')+'<br>Source failures: '+failures+'<br>Reconciliation: '+(Object.entries(trace.reconciliation).map(([key,value])=>escapeHtml(key)+': '+value).join(' · ')||'none')+'<br>Privacy transformations: '+(trace.privacyTransformations||[]).length+' inspectable records (hashes + rules, no raw private text)<br>Top rejections: '+(trace.rejectionReasons.map(item=>escapeHtml(item[0])+': '+item[1]).join(' · ')||'none')+'</div>'}catch(error){panel.innerHTML='<div class="empty">'+escapeHtml(error.message)+'</div>'}};
   document.querySelectorAll('[data-evidence]').forEach(button=>button.onclick=()=>{const panel=document.getElementById(button.dataset.evidence);const open=panel.classList.toggle('open');button.setAttribute('aria-expanded',String(open));});document.querySelectorAll('[data-action]').forEach(button=>button.onclick=async()=>{const prompt=findPrompt(button.dataset.prompt);if(!prompt)return;if(button.dataset.action==='edit'){openPromptDialog('edit',prompt);return}if(button.dataset.action==='remove'&&!confirm('Remove this prompt from the tracking set?'))return;button.disabled=true;const status=button.parentElement.querySelector('.feedback-status');try{const verdict=button.dataset.action==='pin'?'approved':'rejected';await requestJson('/api/prompts/'+encodeURIComponent(run.companyId)+'/'+encodeURIComponent(prompt.id)+'/feedback',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({verdict,reason:verdict==='rejected'?'other':undefined,ruleScope:'prompt'})});status.textContent=verdict==='approved'?'Saved as benchmark':'Removed';await refreshActive()}catch(error){status.textContent=error.message;button.disabled=false}});results.scrollIntoView({behavior:'smooth',block:'start'});
 }
-async function waitForJob(jobId){const deadline=Date.now()+15*60*1000;let delay=900;while(Date.now()<deadline){const response=await fetch('/api/jobs/'+encodeURIComponent(jobId));if([502,503,504].includes(response.status)){progressMessage.textContent='The demo service is restarting; reconnecting automatically…';await new Promise(resolve=>setTimeout(resolve,delay));delay=Math.min(3000,Math.round(delay*1.25));continue}const body=await parseApiResponse(response,'Could not read analysis job');updateProgressPhase(body.status);if(body.status==='cancelled')throw new Error('Analysis was cancelled');if(body.status==='complete'||body.status==='failed'){if(body.result)return body.result;throw new Error(body.error||'Analysis failed')}await new Promise(resolve=>setTimeout(resolve,delay));delay=Math.min(3000,Math.round(delay*1.25))}throw new Error('Analysis is still running. Return to this URL to reconnect to the saved job.')}
+async function waitForJob(jobId){const deadline=Date.now()+15*60*1000;let delay=900,lastAttempts=0;while(Date.now()<deadline){const response=await fetch('/api/jobs/'+encodeURIComponent(jobId));if([502,503,504].includes(response.status)){progressMessage.textContent='The demo service is restarting; reconnecting automatically…';await new Promise(resolve=>setTimeout(resolve,delay));delay=Math.min(3000,Math.round(delay*1.25));continue}const body=await parseApiResponse(response,'Could not read analysis job');updateProgressPhase(body.status);if((body.attempts||0)>lastAttempts&&lastAttempts>0)progressMessage.textContent='A deployment interrupted this run; the worker resumed it automatically.';lastAttempts=body.attempts||lastAttempts;if(body.status==='cancelled')throw new Error('Analysis was cancelled');if(body.status==='complete'||body.status==='failed'){if(body.result)return body.result;throw new Error(body.error||'Analysis failed')}await new Promise(resolve=>setTimeout(resolve,delay));delay=Math.min(3000,Math.round(delay*1.25))}throw new Error('Analysis is still running. Return to this URL to reconnect to the saved job.')}
 async function resumeJob(domain,jobId){shell.classList.add('results-mode');startProgress(domain,jobId);try{const result=await waitForJob(jobId);render(result);await load()}catch(error){sessionStorage.removeItem('promptgen-job:'+domain);showLanding(false);showError(error.message||String(error))}}
 async function analyze(domain){showError('');const normalized=cleanDomain(domain);if(!normalized){showError('Enter a valid company domain.');return}shell.classList.add('results-mode');if(location.pathname==='/prompts')history.replaceState({domain:normalized},'', '/prompts?domain='+encodeURIComponent(normalized));else history.pushState({domain:normalized},'', '/prompts?domain='+encodeURIComponent(normalized));submit.disabled=true;submit.textContent='Analyzing…';results.classList.remove('visible');try{const response=await fetch('/api/run-domain',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({domain:normalized})});const body=await parseApiResponse(response,'Could not start the analysis');sessionStorage.setItem('promptgen-job:'+normalized,body.jobId);startProgress(normalized,body.jobId);const result=await waitForJob(body.jobId);render(result);await load()}catch(error){sessionStorage.removeItem('promptgen-job:'+normalized);showLanding(false);showError(error.message||String(error))}finally{submit.disabled=false;submit.textContent='Find prompts'}}
 cancelRun.addEventListener('click',async()=>{if(!activeJobId)return;cancelRun.disabled=true;progressMessage.textContent='Cancelling analysis…';try{await requestJson('/api/jobs/'+encodeURIComponent(activeJobId)+'/cancel',{method:'POST'});}catch(error){showError(error.message||String(error))}finally{cancelRun.disabled=false}});

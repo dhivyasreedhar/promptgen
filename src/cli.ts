@@ -5,6 +5,7 @@ import { evaluateIndependentBenchmark } from "./eval-benchmark.js";
 import { evaluateHumanAnnotations, prepareHumanEvaluation } from "./eval-human.js";
 import { readOpenAiJudgeReport, rerankFrozenRetrievalCorpus, runOpenAiJudge } from "./eval-llm-judge.js";
 import { runCompany } from "./pipeline/run.js";
+import { safeEmbeddingText } from "./privacy/transform.js";
 import { scheduler } from "./scheduler.js";
 import { serve } from "./server.js";
 import { migratePostgres, postgresHealth } from "./store/postgres-admin.js";
@@ -109,10 +110,12 @@ switch (command) {
     const pending = await store.evidenceMissingEmbeddings(target, provider.provider, provider.model, limit);
     let completed = 0;
     for (let offset = 0; offset < pending.length; offset += 64) {
-      const batch = pending.slice(offset, offset + 64); const vectors = await provider.embedDocuments(batch.map(item => item.claim));
-      await store.writeEmbeddings(batch.map((item, index) => ({ id: item.id, embedding: vectors[index]!, inputHash: embeddings.embeddingInputHash(item.claim) })),
+      const batch = pending.slice(offset, offset + 64);
+      const safeBatch = batch.flatMap(item => { const text = safeEmbeddingText(item); return text ? [{ item, text }] : []; });
+      const vectors = await provider.embedDocuments(safeBatch.map(item => item.text));
+      await store.writeEmbeddings(safeBatch.map(({ item, text }, index) => ({ id: item.id, embedding: vectors[index]!, inputHash: embeddings.embeddingInputHash(text) })),
         provider.provider, provider.model, provider.dimensions);
-      completed += batch.length;
+      completed += safeBatch.length;
     }
     process.stdout.write(`${JSON.stringify({ companyId: target, provider: provider.provider, model: provider.model,
       dimensions: provider.dimensions, embedded: completed, remainingMayExist: completed === limit })}\n`);

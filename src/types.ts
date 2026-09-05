@@ -127,6 +127,7 @@ export interface PromptCandidate {
   evidenceBasis?: "observed-demand" | "public-inference";
   origin?: PromptOrigin;
   coverage?: CoverageDimensions;
+  generationMethod?: "model" | "evidence-scaffold";
 }
 
 export interface ValidationFinding {
@@ -172,6 +173,9 @@ export interface RunResult {
   startedAt: string;
   completedAt: string;
   provider: string;
+  /** Explicit run mode; UI must not infer this from the surviving citations. */
+  contextMode?: "public" | "connected";
+  buildVersion?: string;
   discoveryPrompts: TrackingPrompt[];
   boundaryPrompts: TrackingPrompt[];
   benchmarkPrompts?: TrackingPrompt[];
@@ -227,6 +231,7 @@ export interface RunJob {
   company: CompanyConfig;
   fixtures: boolean;
   createdAt: string;
+  attempts?: number;
   startedAt?: string;
   completedAt?: string;
   result?: RunResult;

@@ -86,9 +86,11 @@ function conflicts(left: ValidatedCandidate, right: ValidatedCandidate): boolean
   const semanticOverlap = setJaccard(semanticLeft, semanticRight);
   const keyOverlap = left.semanticKey && right.semanticKey ? setJaccard(keyTokens(left.semanticKey), keyTokens(right.semanticKey)) : 0;
   const sharedNamedFacet = NAMED_FACETS.some(facet => left.text.toLowerCase().includes(facet) && right.text.toLowerCase().includes(facet));
+  const sharedSetupWizard = /\bwizard\b/i.test(left.text) && /\bwizard\b/i.test(right.text);
   const sharedConcept = CONCEPTS.some(patterns => patterns.every(pattern => pattern.test(left.text)) && patterns.every(pattern => pattern.test(right.text)));
   return jaccard(left.text, right.text) >= 0.75 ||
-    sharedNamedFacet ||
+    sharedSetupWizard ||
+    (sharedNamedFacet && keyOverlap >= 0.3) ||
     sharedConcept ||
     keyOverlap >= 0.42 ||
     (semanticIntersection >= 3 && semanticOverlap >= 0.28) ||

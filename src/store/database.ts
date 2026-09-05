@@ -436,6 +436,7 @@ function rowToJob(row: Record<string, unknown>): RunJob {
   return {
     id: String(row.id), companyId: String(row.company_id), status: String(row.status) as RunJob["status"],
     company: JSON.parse(String(row.company_json)) as CompanyConfig, fixtures: Boolean(row.fixtures), createdAt: String(row.created_at),
+    ...(typeof row.attempts === "number" ? { attempts: row.attempts } : {}),
     ...(row.started_at ? { startedAt: String(row.started_at) } : {}), ...(row.completed_at ? { completedAt: String(row.completed_at) } : {}),
     ...(row.result_json ? { result: JSON.parse(String(row.result_json)) as RunResult } : {}), ...(row.error ? { error: String(row.error) } : {}),
   };

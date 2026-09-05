@@ -9,6 +9,7 @@ import { validateCandidates } from "../prompts/validate.js";
 import { selectPrompts, summarizeCoverage } from "../prompts/select.js";
 import { attachPromptContext } from "../prompts/provenance.js";
 import { repairCandidates } from "../prompts/repair.js";
+import { scaffoldCandidates } from "../prompts/scaffold.js";
 import { planEvidenceNeeds } from "../retrieval/planner.js";
 import { EvidenceRetriever, rankEvidenceCandidates } from "../retrieval/retriever.js";
 import { HostedEvidenceRetriever } from "../retrieval/hosted-retriever.js";
@@ -21,7 +22,7 @@ import type { CompanyConfig, EvidenceNeed, EvidencePack, EvidenceRecord, Missing
 import { hash, isoNow, log, newRunId, stableId, tokenize } from "../util.js";
 import { classifyFailure } from "../operations/errors.js";
 import { operationalMetrics } from "../operations/metrics.js";
-import { transformEvidenceForExternal } from "../privacy/transform.js";
+import { safeEmbeddingText, transformEvidenceForExternal } from "../privacy/transform.js";
 import { isBuyingSignal } from "../context/intent.js";
 import { isEvidenceEligible } from "../context/policy.js";
 
@@ -31,6 +32,7 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
   const runStarted = performance.now();
   const startedAt = isoNow();
   const runId = newRunId(company.id);
+  const version = buildVersion();
   const runDirectory = path.join(config.runsDir, company.id, runId);
   await mkdir(runDirectory, { recursive: true });
   using db = new EvidenceDatabase(config.dbPath);
@@ -52,14 +54,18 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
 
   try {
     await metadata?.startRun(company, runId, startedAt, model.name);
-    trace.record("run", "started", { fixtures: options.fixtures, provider: model.name, enabledSources: company.enabledSources });
+    trace.record("run", "started", { fixtures: options.fixtures, provider: model.name, enabledSources: company.enabledSources,
+      ...(version ? { buildVersion: version } : {}) });
     const connectorConfig = publicFastPath ? { ...config, maxPublicPages: Math.min(config.maxPublicPages, 16) } : config;
     for (const connector of buildConnectors(connectorConfig, options.fixtures).filter(item => company.enabledSources.includes(item.source))) {
       let sourceCount = 0;
       let collectedCount = 0;
       try {
         const collected = [];
+        const collectedIds = new Set<string>();
         for await (const artifact of connector.collect(company, controller.signal)) {
+          if (collectedIds.has(artifact.id)) continue;
+          collectedIds.add(artifact.id);
           collectedCount += 1;
           collected.push({ artifact, contentHash: hash(artifact.content) });
         }
@@ -142,8 +148,9 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
       : config.embeddingProvider === "ollama"
       ? new OllamaEmbeddingProvider(config.embeddingModel, config.embeddingDimensions, config.ollamaUrl, config.embeddingTimeoutMs)
       : undefined;
-    if (metadata && embeddingProvider && config.embeddingRunLimit > 0 && !publicFastPath) {
-      await backfillEmbeddings(metadata, company.id, embeddingProvider, config.embeddingRunLimit, trace, controller.signal);
+    if (metadata && embeddingProvider && config.embeddingRunLimit > 0) {
+      await backfillEmbeddings(metadata, company.id, embeddingProvider,
+        publicFastPath ? Math.min(config.embeddingRunLimit, 100) : config.embeddingRunLimit, trace, controller.signal);
     }
     const localRetriever = new EvidenceRetriever(db);
     const hostedRetriever = metadata ? new HostedEvidenceRetriever(metadata, db, embeddingProvider,
@@ -190,16 +197,19 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
 
     const evidenceById = new Map(db.evidenceByIds(relevantEvidenceIds).map(record => [record.id, record]));
     tracePrivacy(trace, [...evidenceById.values()], "candidate-generation");
-    // Keep the connected-source path responsive: 24 candidates are enough to
-    // select ten after strict entailment review, while avoiding an extra
-    // review batch (and its model latency) on every run. Backfill remains the
-    // safety net for unusually noisy evidence.
-    const generationOptions = publicFastPath ? { minCandidates: 30, maxCandidates: 30 } : { minCandidates: 24, maxCandidates: 24 };
-    const generationVersion = publicFastPath ? "generate-v6-public-diverse-pages" : "generate-v5-atomic-core-mix";
-    const generatedCandidates = await cachedModelCall(db, trace, model.name, generationVersion,
+    // The model supplies natural phrasing while a conservative, evidence-derived
+    // scaffold guarantees coverage of every opportunity. This is faster and more
+    // reliable than asking the same model for a second large backfill generation.
+    const generationOptions = { minCandidates: 16, maxCandidates: 16 };
+    const generationVersion = publicFastPath ? "generate-v7-public-diverse-pages" : "generate-v6-atomic-core-mix";
+    const generatedOutput = await cachedModelCall(db, trace, model.name, generationVersion,
       { company, opportunities, generationOptions, evidence: opportunities.flatMap(item => item.evidenceIds.map(id => evidenceById.get(id))) },
       () => model.generate(company, opportunities, evidenceById, controller.signal, generationOptions));
-    const candidateNeeds: EvidenceNeed[] = generatedCandidates.slice(0, 60).map(candidate => ({
+    // Old cache entries predate generationMethod; normalize at the cache boundary.
+    const generatedCandidates = generatedOutput.map(candidate => ({ ...candidate, generationMethod: "model" as const }));
+    const scaffolds = scaffoldCandidates(company, opportunities);
+    const seededCandidates = dedupeCandidates([...generatedCandidates, ...scaffolds]).slice(0, 60);
+    const candidateNeeds: EvidenceNeed[] = seededCandidates.map(candidate => ({
       id: `candidate:${candidate.id}`, query: candidate.text, kinds: ["demand", "language", "capability", "constraint"],
       reason: "Candidate-specific entailment and conflict check", preferredSources: ["web", "github", "gsc", "intercom", "slack", "calls", "linear"],
     }));
@@ -211,17 +221,20 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
         query: pack.need.query, evidenceIds: pack.records.map(item => item.evidence.id), reconciliation: pack.reconciliation ?? [],
       }, pack.need.id);
     }
-    const candidates = generatedCandidates.map(candidate => {
+    const candidates = seededCandidates.map(candidate => {
       const targeted = candidatePackById.get(candidate.id)?.records.map(item => item.evidence) ?? [];
       const opportunityIds = opportunities.find(item => item.id === candidate.opportunityId)?.evidenceIds ?? [];
-      return { ...candidate, evidenceIds: groundEvidenceIds(candidate.text, [...candidate.evidenceIds, ...opportunityIds], targeted, evidenceById) };
+      return { ...candidate, evidenceIds: groundEvidenceIds(candidate.text, [...candidate.evidenceIds, ...opportunityIds], targeted, evidenceById,
+        candidate.evidenceBasis ?? "observed-demand") };
     });
     for (const candidate of candidates) {
       const opportunity = opportunities.find(item => item.id === candidate.opportunityId);
       if (opportunity) opportunity.evidenceIds = [...new Set([...opportunity.evidenceIds, ...candidate.evidenceIds])];
     }
     metrics.candidatesGenerated = candidates.length;
-    trace.record("generate", "candidates-created", { provider: model.name, count: candidates.length });
+    trace.record("generate", "candidates-created", {
+      provider: model.name, modelGenerated: generatedCandidates.length, evidenceScaffolds: scaffolds.length, total: candidates.length,
+    });
     const repairs = repairCandidates(candidates, opportunities, evidenceById);
     const eligibleCandidates = repairs.map(item => item.repaired);
     for (const repair of repairs.filter(item => item.changes.length > 0)) trace.record("repair", "candidate-transformed", {
@@ -235,68 +248,20 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
     tracePrivacy(trace, reviewable.flatMap(item => item.evidenceIds.map(id => evidenceById.get(id))).filter((item): item is EvidenceRecord => Boolean(item)), "candidate-review");
     const modelReviews = await cachedModelCall(db, trace, reviewer.name, "review-v6-complete-atomic-claims", { company, candidates: reviewable, evidence: reviewable.flatMap(item => item.evidenceIds.map(id => evidenceById.get(id))) }, () => reviewer.review(company, reviewable, evidenceById, controller.signal));
     const reviewById = new Map(modelReviews.map(review => [review.candidateId, review]));
-    let validated = attachPromptContext(applyModelReviews(deterministic, reviewById, evidenceById), opportunities, evidenceById);
+    const validated = attachPromptContext(applyModelReviews(deterministic, reviewById, evidenceById), opportunities, evidenceById);
     const guidance = metadata ? await metadata.promptGuidance(company.id) : { rejected: [], preferred: [], benchmark: [], rules: [] };
-    validated = applyPromptGuidance(validated, new Set(guidance.rejected), guidance.rules);
+    const guided = applyPromptGuidance(validated, new Set(guidance.rejected), guidance.rules);
     const preferredPromptIds = new Set(guidance.preferred);
     trace.record("feedback", "guidance-applied", { rejectedPromptIds: guidance.rejected, preferredPromptIds: guidance.preferred });
-    trace.record("review", "model-critique-complete", { provider: reviewer.name, requested: reviewable.length, returned: modelReviews.length, accepted: validated.filter(item => item.accepted).length });
-    let selection = selectPrompts(validated, 10, preferredPromptIds, new Set(guidance.benchmark));
+    trace.record("review", "model-critique-complete", { provider: reviewer.name, requested: reviewable.length, returned: modelReviews.length, accepted: guided.filter(item => item.accepted).length });
+    const selection = selectPrompts(guided, 10, preferredPromptIds, new Set(guidance.benchmark));
+    if (selection.discovery.length < 10) trace.record("selection", "under-produced", {
+      missing: 10 - selection.discovery.length,
+      reason: "Evidence-derived scaffolds were also unable to pass the complete validation contract.",
+    });
 
-    // Diversity can make a large valid pool select fewer than ten. Retry only on
-    // uncovered evidence packs, then send every backfill candidate through the
-    // identical repair, deterministic validation, and independent critic gates.
-    if (selection.discovery.length < 10) {
-      const coveredOpportunities = new Set(selection.discovery.map(item => item.opportunityId));
-      const uncovered = opportunities.filter(item => !coveredOpportunities.has(item.id));
-      trace.record("backfill", "started", { missing: 10 - selection.discovery.length, uncoveredOpportunityIds: uncovered.map(item => item.id) });
-      if (uncovered.length > 0) {
-        const publicBackfillCount = Math.max(10, Math.min(20, (10 - selection.discovery.length) * 2));
-        const backfillOptions = publicFastPath ? { minCandidates: publicBackfillCount, maxCandidates: publicBackfillCount } : undefined;
-        const generatedBackfill = await cachedModelCall(db, trace, model.name, publicFastPath ? "generate-backfill-v3-public" : "generate-backfill-v2-recommendation-seeking", {
-          company, missing: 10 - selection.discovery.length, opportunities: uncovered,
-          evidence: uncovered.flatMap(item => item.evidenceIds.map(id => evidenceById.get(id))), backfillOptions,
-        }, () => model.generate(company, uncovered, evidenceById, controller.signal, backfillOptions));
-        const existingIds = new Set(candidates.map(item => item.id));
-        const rawBackfillCandidates = generatedBackfill.filter(item => !existingIds.has(item.id));
-        const backfillNeeds: EvidenceNeed[] = rawBackfillCandidates.map(candidate => ({
-          id: `backfill:${candidate.id}`, query: candidate.text, kinds: ["demand", "language", "capability", "constraint"],
-          reason: "Backfill candidate-specific entailment and conflict check", preferredSources: ["web", "github", "gsc", "intercom", "slack", "calls", "linear"],
-        }));
-        const backfillPacks = publicFastPath ? [] : await retrieve(backfillNeeds);
-        const backfillPackById = new Map(backfillPacks.map(pack => [pack.need.id.slice("backfill:".length), pack]));
-        for (const pack of backfillPacks) {
-          for (const item of pack.records) evidenceById.set(item.evidence.id, item.evidence);
-          trace.record("candidate-retrieve", pack.missing ? "backfill-context-missing" : "backfill-context-found", {
-            query: pack.need.query, evidenceIds: pack.records.map(item => item.evidence.id), reconciliation: pack.reconciliation ?? [],
-          }, pack.need.id);
-        }
-        const backfillCandidates = rawBackfillCandidates.map(candidate => {
-          const targeted = backfillPackById.get(candidate.id)?.records.map(item => item.evidence) ?? [];
-          const opportunityIds = uncovered.find(item => item.id === candidate.opportunityId)?.evidenceIds ?? [];
-          return { ...candidate, evidenceIds: groundEvidenceIds(candidate.text, [...candidate.evidenceIds, ...opportunityIds], targeted, evidenceById) };
-        });
-        metrics.candidatesGenerated += backfillCandidates.length;
-        const backfillRepairs = repairCandidates(backfillCandidates, uncovered, evidenceById);
-        const backfillDeterministic = validateCandidates(company, backfillRepairs.map(item => item.repaired), uncovered, evidenceById);
-        const backfillReviewable = backfillDeterministic.filter(item => item.accepted);
-        const backfillReviews = await cachedModelCall(db, trace, reviewer.name, "review-backfill-v6-complete-atomic-claims", {
-          company, candidates: backfillReviewable,
-          evidence: backfillReviewable.flatMap(item => item.evidenceIds.map(id => evidenceById.get(id))),
-        }, () => reviewer.review(company, backfillReviewable, evidenceById, controller.signal));
-        const backfillById = new Map(backfillReviews.map(review => [review.candidateId, review]));
-        const validatedBackfill = attachPromptContext(applyModelReviews(backfillDeterministic, backfillById, evidenceById), uncovered, evidenceById);
-        validated = applyPromptGuidance([...validated, ...validatedBackfill], new Set(guidance.rejected), guidance.rules);
-        selection = selectPrompts(validated, 10, preferredPromptIds, new Set(guidance.benchmark));
-        trace.record("backfill", "completed", {
-          generated: backfillCandidates.length, reviewable: backfillReviewable.length,
-          accepted: validatedBackfill.filter(item => item.accepted).length, discoveryCount: selection.discovery.length,
-        });
-      }
-    }
-
-    metrics.candidatesAccepted = validated.filter(item => item.accepted).length;
-    for (const candidate of validated) trace.record("validate", candidate.accepted ? "accepted" : "rejected", {
+    metrics.candidatesAccepted = guided.filter(item => item.accepted).length;
+    for (const candidate of guided) trace.record("validate", candidate.accepted ? "accepted" : "rejected", {
       text: candidate.text, score: candidate.score, evidenceIds: candidate.evidenceIds, opportunityId: candidate.opportunityId, findings: candidate.findings,
       semanticKey: candidate.semanticKey,
     }, candidate.id);
@@ -328,7 +293,8 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
     const tracePath = await trace.writeManifest(runDirectory);
     const result: RunResult = {
       schemaVersion: 1, runId, companyId: company.id, companyName: company.name, domain: company.domain, status,
-      startedAt, completedAt: isoNow(), provider: model.name, discoveryPrompts: selection.discovery,
+      startedAt, completedAt: isoNow(), provider: model.name, contextMode: publicFastPath ? "public" : "connected",
+      ...(version ? { buildVersion: version } : {}), discoveryPrompts: selection.discovery,
       boundaryPrompts: selection.boundaries, missingEvidence, metrics, tracePath, warnings,
       coverage,
       ...(promptLifecycle ? { promptLifecycle } : {}),
@@ -347,7 +313,8 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
     const tracePath = await trace.writeManifest(runDirectory);
     const result: RunResult = {
       schemaVersion: 1, runId, companyId: company.id, companyName: company.name, domain: company.domain,
-      status: "failed", startedAt, completedAt: isoNow(), provider: model.name, discoveryPrompts: [], boundaryPrompts: [],
+      status: "failed", startedAt, completedAt: isoNow(), provider: model.name, contextMode: publicFastPath ? "public" : "connected",
+      ...(version ? { buildVersion: version } : {}), discoveryPrompts: [], boundaryPrompts: [],
       missingEvidence: [], metrics, tracePath, warnings, error: message, failure,
     };
     await writeResult(runDirectory, result);
@@ -367,32 +334,25 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
   }
 }
 
-function groundEvidenceIds(query: string, originalIds: string[], targeted: EvidenceRecord[], evidenceById: Map<string, EvidenceRecord>): string[] {
-  const selected = targeted.slice(0, 8);
-  const originalRecords = [...new Set(originalIds)].map(id => evidenceById.get(id)).filter((item): item is EvidenceRecord => Boolean(item));
-  const original = rankEvidenceCandidates(originalRecords.map((record, index) => ({ record, lexicalRank: index + 1 })), {
+export function groundEvidenceIds(query: string, originalIds: string[], targeted: EvidenceRecord[], evidenceById: Map<string, EvidenceRecord>,
+  evidenceBasis: "observed-demand" | "public-inference"): string[] {
+  const allowed = (record: EvidenceRecord) => evidenceBasis !== "public-inference" || record.visibility === "public";
+  const originalRecords = [...new Set(originalIds)].map(id => evidenceById.get(id))
+    .filter((item): item is EvidenceRecord => Boolean(item))
+    .filter(allowed);
+  const allRecords = uniqueEvidence([...targeted.filter(allowed), ...originalRecords]);
+  const ranked = rankEvidenceCandidates(allRecords.map((record, index) => ({ record, lexicalRank: index + 1 })), {
     id: "candidate-fallback", query, kinds: ["demand", "language", "capability", "constraint"],
     reason: "Rank missing evidence roles", preferredSources: [],
   }).map(item => item.evidence);
-  const addRequired = (record: EvidenceRecord | undefined) => {
-    if (!record || selected.some(item => item.id === record.id)) return;
-    if (selected.length >= 8) selected.pop();
-    selected.unshift(record);
-  };
-  if (!selected.some(isBuyingSignal)) {
-    addRequired(original.find(isBuyingSignal));
+  const isObservedDemand = (record: EvidenceRecord) => (record.kind === "demand" || record.kind === "language") && isBuyingSignal(record);
+  const capability = ranked.find(record => record.kind === "capability" || (record.kind === "change" && record.lifecycle === "confirmed"));
+  if (evidenceBasis === "observed-demand") {
+    const demand = ranked.find(isObservedDemand);
+    if (demand && capability) return [demand.id, capability.id];
   }
-  if (!selected.some(record => record.kind === "capability" || (record.kind === "change" && record.lifecycle === "confirmed"))) {
-    addRequired(original.find(record => record.kind === "capability" || (record.kind === "change" && record.lifecycle === "confirmed")));
-  }
-  for (const record of original) {
-    if (selected.length >= 2) break;
-    addRequired(record);
-  }
-  const buying = selected.find(isBuyingSignal);
-  const capability = selected.find(record => record.kind === "capability" || (record.kind === "change" && record.lifecycle === "confirmed"));
-  if (buying && capability) return [...new Set([buying.id, capability.id])];
-  return selected.slice(0, 4).map(record => record.id);
+  if (capability) return [capability.id];
+  return ranked.slice(0, evidenceBasis === "public-inference" ? 1 : 2).map(record => record.id);
 }
 
 async function backfillEmbeddings(metadata: PostgresMetadataStore, companyId: string, provider: EmbeddingProvider,
@@ -403,10 +363,11 @@ async function backfillEmbeddings(metadata: PostgresMetadataStore, companyId: st
     for (let offset = 0; offset < pending.length; offset += 64) {
       signal.throwIfAborted();
       const batch = pending.slice(offset, offset + 64);
-      const vectors = await provider.embedDocuments(batch.map(item => item.claim), signal);
-      await metadata.writeEmbeddings(batch.map((item, index) => ({ id: item.id, embedding: vectors[index]!, inputHash: embeddingInputHash(item.claim) })),
+      const safeBatch = batch.flatMap(item => { const text = safeEmbeddingText(item); return text ? [{ item, text }] : []; });
+      const vectors = await provider.embedDocuments(safeBatch.map(item => item.text), signal);
+      await metadata.writeEmbeddings(safeBatch.map(({ item, text }, index) => ({ id: item.id, embedding: vectors[index]!, inputHash: embeddingInputHash(text) })),
         provider.provider, provider.model, provider.dimensions);
-      completed += batch.length;
+      completed += safeBatch.length;
     }
     trace.record("embed", "backfill-complete", { provider: provider.provider, model: provider.model,
       dimensions: provider.dimensions, embedded: completed, remainingMayExist: completed === limit });
@@ -431,15 +392,26 @@ async function writeResult(directory: string, result: RunResult): Promise<void> 
 
 function errorMessage(error: unknown): string { return error instanceof Error ? error.message : String(error); }
 
+function buildVersion(): string | undefined {
+  return process.env.RENDER_GIT_COMMIT?.slice(0, 40) ?? process.env.GIT_COMMIT_SHA?.slice(0, 40);
+}
+
 function uniqueEvidence<T extends { id: string }>(records: T[]): T[] {
   return [...new Map(records.map(record => [record.id, record])).values()];
+}
+
+function dedupeCandidates<T extends { text: string; opportunityId: string }>(candidates: T[]): T[] {
+  return [...new Map(candidates.map(candidate => [
+    `${candidate.opportunityId}:${candidate.text.toLowerCase().replaceAll(/[^a-z0-9]+/g, " ").trim()}`,
+    candidate,
+  ])).values()];
 }
 
 const PUBLIC_TOPIC_STOP = new Set([
   "about", "after", "also", "available", "built", "company", "from", "have", "includes", "into", "more", "native",
   "offers", "platform", "product", "provides", "support", "supports", "their", "these", "they", "this", "tools", "using", "with", "your",
 ]);
-const PERIPHERAL_PUBLIC_CLAIM = /\b(data processing register|security report|documentation available|documented guidance|install wizard|cli install|terms of service|privacy policy|marketing assets?)\b/i;
+const PERIPHERAL_PUBLIC_CLAIM = /\b(data processing register|security report|documentation available|documented guidance|install wizard|cli install|terms of service|privacy policy|marketing assets?|free demo|free trial|book (?:a )?demo|contact sales)\b/i;
 
 /**
  * Public-only runs do not need an LLM round merely to decide what to retrieve:
@@ -518,7 +490,11 @@ export function applyModelReviews(
     return {
       ...candidate, evidenceIds: relevantIds,
       accepted: candidate.accepted && review.supported && atomicClaimsPass && demandPasses && review.capabilitySupported && hasCapability && review.usable,
-      score: (candidate.score + review.score) / 2, findings: [...candidate.findings, ...modelFindings], semanticKey: review.semanticKey,
+      // Scaffolds are a reliability floor, not the preferred copy. A modest
+      // penalty lets natural model-written prompts win while preserving enough
+      // validated fallbacks to reach the ten-prompt contract.
+      score: Math.max(0, (candidate.score + review.score) / 2 - (candidate.generationMethod === "evidence-scaffold" ? 0.3 : 0)),
+      findings: [...candidate.findings, ...modelFindings], semanticKey: review.semanticKey,
     };
   });
 }
@@ -552,7 +528,7 @@ async function cachedModelCall<T>(
   input: unknown,
   execute: () => Promise<T>,
 ): Promise<T> {
-  const key = hash(JSON.stringify({ contractVersion: "prompt-pipeline-v4", provider, operation, input }));
+  const key = hash(JSON.stringify({ contractVersion: "prompt-pipeline-v7", provider, operation, input }));
   const cached = db.getModelCache<T>(key);
   if (cached !== undefined) {
     trace.record("model", "cache-hit", { provider, operation, key, durationMs: 0 });

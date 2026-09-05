@@ -48,6 +48,14 @@ export function safePreviewForUi(record: EvidenceRecord): { text: string; rules:
   return { text: transformed.audit.safePreview, rules: transformed.audit.rules };
 }
 
+export function safeEmbeddingText(record: Pick<EvidenceRecord, "claim" | "safeUse" | "source" | "kind" | "tags"> & { buyerIntent?: EvidenceRecord["buyerIntent"] }): string | undefined {
+  if (record.safeUse === "never-expose") return undefined;
+  if (record.safeUse === "public") return redactPublicAccidents(record.claim);
+  const tags = record.tags.filter(tag => SAFE_TOKEN.test(tag)).slice(0, 12);
+  const topic = tags.length ? tags.join(", ") : "the documented product category";
+  return `${record.safeUse === "aggregate-only" ? "Aggregated" : "De-identified"} ${record.source} ${record.kind} signal about ${topic}; buyer intent: ${record.buyerIntent ?? "unknown"}.`;
+}
+
 export function redactedEvidenceExcerptForUi(record: EvidenceRecord): { text: string; rules: string[] } {
   if (record.safeUse === "never-expose") return { text: "Withheld by source policy.", rules: ["blocked-never-expose"] };
   if (record.safeUse === "aggregate-only") return { text: transformEvidenceForExternal(record).audit.safePreview, rules: ["aggregate-only-summary"] };

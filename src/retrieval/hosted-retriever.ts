@@ -17,7 +17,7 @@ export class HostedEvidenceRetriever {
     const localPacks = new EvidenceRetriever(this.local).retrieve(companyId, needs, perNeed * 3, access);
     const health = new Map(this.local.sourceHealth(companyId).map(item => [item.source, item]));
     const queryEmbeddings = await this.embedNeeds(needs);
-    return mapConcurrent(needs, 3, async (need, index) => {
+    return mapConcurrent(needs, 6, async (need, index) => {
       let hits: Awaited<ReturnType<PostgresMetadataStore["searchEvidence"]>> = [];
       if (!this.hostedUnavailable) {
         try {

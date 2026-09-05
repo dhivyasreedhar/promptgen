@@ -28,9 +28,15 @@ describe("selectPrompts", () => {
   });
 
   it("does not spend two final slots on the same named integration facet", () => {
-    const first = { ...candidate(0), text: "Which code review tools integrate with GitLab repositories?", evidenceIds: ["a", "b"] };
-    const second = { ...candidate(1), text: "What is the best GitLab review workflow for enterprise teams?", evidenceIds: ["c", "d"] };
+    const first = { ...candidate(0), text: "Which code review tools integrate with GitLab repositories?", evidenceIds: ["a", "b"], semanticKey: "gitlab-code-review-integration" };
+    const second = { ...candidate(1), text: "What is the best GitLab review workflow for enterprise teams?", evidenceIds: ["c", "d"], semanticKey: "gitlab-review-workflow" };
     expect(selectPrompts([first, second]).discovery).toHaveLength(1);
+  });
+
+  it("keeps different buyer situations that happen to share an integration", () => {
+    const response = { ...candidate(0), text: "What tools run incident response natively in Slack channels?", semanticKey: "slack-native-incident-response" };
+    const scheduling = { ...candidate(1), text: "Which tools synchronize on-call schedules to Slack user groups?", semanticKey: "on-call-schedule-slack-user-groups" };
+    expect(selectPrompts([response, scheduling], 2).discovery).toHaveLength(2);
   });
 
   it("deduplicates large repository and huge monorepo formulations", () => {
