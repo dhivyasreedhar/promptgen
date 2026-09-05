@@ -22,7 +22,11 @@ const envSchema = z.object({
   PROMPTGEN_MODEL_TIMEOUT_MS: z.coerce.number().int().min(10_000).max(900_000).default(300_000),
   PROMPTGEN_DAILY_AT: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).default("02:00"),
   PROMPTGEN_TIMEZONE: z.string().default("UTC"),
-  PROMPTGEN_PORT: z.coerce.number().int().min(1024).max(65_535).default(4317),
+  PROMPTGEN_HOST: z.string().min(1).default("127.0.0.1"),
+  PROMPTGEN_PORT: z.coerce.number().int().min(1024).max(65_535).optional(),
+  PORT: z.coerce.number().int().min(1024).max(65_535).optional(),
+  PROMPTGEN_ACCESS_PASSWORD: z.string().min(12).optional(),
+  PROMPTGEN_SCHEDULER_ENABLED: z.enum(["true", "false"]).default("false"),
   PROMPTGEN_MODEL_PROVIDER: z.enum(["auto", "anthropic", "openai", "local"]).default("auto"),
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_MODEL: z.string().default("gpt-5-mini"),
@@ -59,7 +63,10 @@ export interface AppConfig {
   modelTimeoutMs: number;
   dailyAt: string;
   timezone: string;
+  host: string;
   port: number;
+  accessPassword?: string;
+  schedulerEnabled: boolean;
   modelProvider: "auto" | "anthropic" | "openai" | "local";
   openaiApiKey?: string;
   openaiModel: string;
@@ -97,7 +104,10 @@ export async function loadConfig(rootDir = process.cwd()): Promise<AppConfig> {
     modelTimeoutMs: parsed.PROMPTGEN_MODEL_TIMEOUT_MS,
     dailyAt: parsed.PROMPTGEN_DAILY_AT,
     timezone: parsed.PROMPTGEN_TIMEZONE,
-    port: parsed.PROMPTGEN_PORT,
+    host: parsed.PROMPTGEN_HOST,
+    port: parsed.PROMPTGEN_PORT ?? parsed.PORT ?? 4317,
+    ...(parsed.PROMPTGEN_ACCESS_PASSWORD ? { accessPassword: parsed.PROMPTGEN_ACCESS_PASSWORD } : {}),
+    schedulerEnabled: parsed.PROMPTGEN_SCHEDULER_ENABLED === "true",
     modelProvider: parsed.PROMPTGEN_MODEL_PROVIDER,
     ...(parsed.OPENAI_API_KEY ? { openaiApiKey: parsed.OPENAI_API_KEY } : {}),
     openaiModel: parsed.OPENAI_MODEL,

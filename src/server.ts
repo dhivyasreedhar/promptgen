@@ -1,5 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { randomUUID } from "node:crypto";
+import { randomUUID, timingSafeEqual } from "node:crypto";
 import { isIP } from "node:net";
 import type { AppConfig } from "./config.js";
 import { companyById } from "./config.js";
@@ -11,14 +11,25 @@ import { log, normalizeText } from "./util.js";
 import { operationalMetrics } from "./operations/metrics.js";
 import { redactedEvidenceExcerptForUi, safePreviewForUi } from "./privacy/transform.js";
 import { composeTrackingSet } from "./prompts/tracking-set.js";
+import { isScheduledMinute, runDueCompanies } from "./scheduler.js";
 
 let processing = false;
+let scheduling = false;
 
 export async function serve(config: AppConfig, fixtures: boolean): Promise<void> {
+  if (!isLoopback(config.host) && !config.accessPassword) {
+    throw new Error("PROMPTGEN_ACCESS_PASSWORD is required when serving on a non-loopback host");
+  }
   const hosted = config.postgresUrl ? new PostgresMetadataStore(config.postgresUrl, config.tenantId, config.tenantName) : undefined;
   const server = createServer(async (request, response) => {
     const started = performance.now();
-    try { await route(config, fixtures, hosted, request, response); }
+    try {
+      if (!isPublicProbe(request) && config.accessPassword && !isAuthorizationValid(request.headers.authorization, config.accessPassword)) {
+        response.writeHead(401, { "www-authenticate": 'Basic realm="Manicule Promptgen", charset="UTF-8"', "cache-control": "no-store" });
+        response.end("Authentication required"); return;
+      }
+      await route(config, fixtures, hosted, request, response);
+    }
     catch (error) { json(response, 500, { error: error instanceof Error ? error.message : String(error) }); }
     finally {
       operationalMetrics.increment("promptgen_http_requests_total", { method: request.method ?? "UNKNOWN", status: String(response.statusCode) });
@@ -28,22 +39,50 @@ export async function serve(config: AppConfig, fixtures: boolean): Promise<void>
   });
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
-    server.listen(config.port, "127.0.0.1", () => resolve());
+    server.listen(config.port, config.host, () => resolve());
   });
   void processJobs(config, hosted);
   const queueTick = setInterval(() => void processJobs(config, hosted), 5_000);
   queueTick.unref();
+  const schedulerOwner = `${process.pid}:${randomUUID()}`;
+  const schedulerTick = config.schedulerEnabled ? setInterval(() => {
+    const now = new Date();
+    if (scheduling || !isScheduledMinute(now, config.dailyAt, config.timezone)) return;
+    scheduling = true;
+    void runDueCompanies(config, fixtures, schedulerOwner, now)
+      .catch(error => log("error", "scheduler.run-failed", { error: errorMessage(error) }))
+      .finally(() => { scheduling = false; });
+  }, 30_000) : undefined;
+  schedulerTick?.unref();
   let shuttingDown = false;
   const shutdown = async () => {
-    if (shuttingDown) return; shuttingDown = true; clearInterval(queueTick);
+    if (shuttingDown) return; shuttingDown = true; clearInterval(queueTick); if (schedulerTick) clearInterval(schedulerTick);
     await new Promise<void>(resolve => server.close(() => resolve()));
     while (processing) await new Promise(resolve => setTimeout(resolve, 100));
     await hosted?.close();
   };
   process.once("SIGINT", () => void shutdown());
   process.once("SIGTERM", () => void shutdown());
-  log("info", "server.started", { url: `http://127.0.0.1:${config.port}`, fixtures });
+  log("info", "server.started", { url: `http://${config.host}:${config.port}`, fixtures, schedulerEnabled: config.schedulerEnabled, authentication: config.accessPassword ? "required" : "disabled" });
 }
+
+export function isAuthorizationValid(header: string | undefined, expectedPassword: string): boolean {
+  if (!header?.startsWith("Basic ")) return false;
+  let decoded: string;
+  try { decoded = Buffer.from(header.slice(6), "base64").toString("utf8"); } catch { return false; }
+  const separator = decoded.indexOf(":");
+  if (separator < 0) return false;
+  const supplied = Buffer.from(decoded.slice(separator + 1));
+  const expected = Buffer.from(expectedPassword);
+  return supplied.length === expected.length && timingSafeEqual(supplied, expected);
+}
+
+function isPublicProbe(request: IncomingMessage): boolean {
+  const pathname = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`).pathname;
+  return pathname === "/healthz" || pathname === "/readyz";
+}
+
+function isLoopback(host: string): boolean { return host === "127.0.0.1" || host === "localhost" || host === "::1"; }
 
 async function route(config: AppConfig, fixtures: boolean, hosted: PostgresMetadataStore | undefined, request: IncomingMessage, response: ServerResponse): Promise<void> {
   const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`);

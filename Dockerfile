@@ -16,6 +16,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=build /app/dist ./dist
 COPY config ./config
+COPY infra ./infra
 RUN mkdir -p /app/data /app/runs /app/fixtures/private && chown -R node:node /app
 USER node
-CMD ["node", "dist/src/cli.js", "run-all"]
+CMD ["sh", "-c", "PROMPTGEN_FIXTURE_SCALE=${PROMPTGEN_FIXTURE_SCALE:-1} node dist/scripts/generate-fixtures.js && node dist/src/cli.js serve --fixtures"]

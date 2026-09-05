@@ -1,0 +1,43 @@
+services:
+  - type: web
+    name: manicule-promptgen-demo
+    runtime: docker
+    plan: starter
+    healthCheckPath: /healthz
+    autoDeploy: true
+    preDeployCommand: node dist/src/cli.js postgres-migrate
+    disk:
+      name: promptgen-data
+      mountPath: /app/persist
+      sizeGB: 1
+    envVars:
+      - key: PROMPTGEN_HOST
+        value: 0.0.0.0
+      - key: PROMPTGEN_DB_PATH
+        value: /app/persist/promptgen.db
+      - key: PROMPTGEN_RUNS_DIR
+        value: /app/persist/runs
+      - key: PROMPTGEN_OBJECTS_DIR
+        value: /app/persist/objects
+      - key: PROMPTGEN_FIXTURE_SCALE
+        value: 1
+      - key: PROMPTGEN_PUBLIC_WEB
+        value: true
+      - key: PROMPTGEN_MODEL_PROVIDER
+        value: anthropic
+      - key: PROMPTGEN_EMBEDDING_PROVIDER
+        value: disabled
+      - key: PROMPTGEN_SCHEDULER_ENABLED
+        value: true
+      - key: PROMPTGEN_DAILY_AT
+        value: "02:00"
+      - key: PROMPTGEN_TIMEZONE
+        value: America/Los_Angeles
+      - key: PROMPTGEN_TENANT_NAME
+        value: Manicule promptgen demo
+      - key: PROMPTGEN_ACCESS_PASSWORD
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
