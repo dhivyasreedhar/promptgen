@@ -1,0 +1,3758 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-05T17:11:45.447Z",
+  "targetCases": 200,
+  "cases": [
+    {
+      "id": "domain-posthog-com:9cd522e72fe8348f186d4f20",
+      "companyId": "domain-posthog-com",
+      "promptId": "9cd522e72fe8348f186d4f20",
+      "text": "What tools let engineering teams debug user issues by watching session replays alongside product analytics?",
+      "evidenceIds": [
+        "5b8ae05866f66cb470986d02",
+        "1f605cf5e7cc428d2720698a",
+        "ba543578b739469f101a0565",
+        "085f9877c89a38aacf2f0947",
+        "d3d39191d07b7facf11f6fc2",
+        "615dfb5922f4ccfb9fe26aa2",
+        "52f5bd02ea3e33f2c630c917",
+        "19f0d9fc4b348f0d7c0af25e"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent",
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:03081bd7ac52e5264db5d5f4",
+      "companyId": "greptile",
+      "promptId": "03081bd7ac52e5264db5d5f4",
+      "text": "What's the best AI code review tool that works with GitLab-hosted repositories, not just GitHub?",
+      "evidenceIds": [
+        "c9d24cccbaaf2d84dd829e2e",
+        "e10142b4b3884e53740a5c76",
+        "602fdbe6319c0aa3dce5de0e"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:ce4713e79531a5025aabc8fe",
+      "companyId": "reducto",
+      "promptId": "ce4713e79531a5025aabc8fe",
+      "text": "What's the best way to extract structured data from legal documents while keeping sensitive files under strict data-residency controls?",
+      "evidenceIds": [
+        "28bb0c59dcb6a5c8886e0395",
+        "d99dbfc1dbd029f61b913817",
+        "ded5417588cf04a2be3a0252",
+        "2c112e4b0f21a1fb8166c225",
+        "36f6453d72d19a2353b4f1f5",
+        "b3a51a766009928f29edf8da"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:747168e5b5c223eb3955cf92",
+      "companyId": "rootly",
+      "promptId": "747168e5b5c223eb3955cf92",
+      "text": "Which incident management platforms give engineering leadership the best MTTR and process metrics dashboards?",
+      "evidenceIds": [
+        "a86fac8562719fd661372509",
+        "ae2ea87a69da50706e16adaa",
+        "ae501f1a0cdaf769b9c88d06"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "supermemory:aab31b7a042e856c651d9f0b",
+      "companyId": "supermemory",
+      "promptId": "aab31b7a042e856c651d9f0b",
+      "text": "Which agent memory APIs can maintain changing user preferences over time?",
+      "evidenceIds": [
+        "287f4107b1a9d1f4266b815b",
+        "2220638d222142f4942210c5",
+        "6f9afca4ceaef1f1b69026ce",
+        "33c2888206f281ac4c72ae5f",
+        "d843e259001f5f5cf1053ac4",
+        "542b39cf201e618b63b34223"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:00dd9c875f5c0408348924b9",
+      "companyId": "domain-posthog-com",
+      "promptId": "00dd9c875f5c0408348924b9",
+      "text": "Which platforms combine session replay with error tracking so we can reproduce and fix bugs faster?",
+      "evidenceIds": [
+        "1f605cf5e7cc428d2720698a",
+        "d3d39191d07b7facf11f6fc2",
+        "5b8ae05866f66cb470986d02",
+        "ba543578b739469f101a0565",
+        "085f9877c89a38aacf2f0947",
+        "448626e7523e1b7b4993898d"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent",
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:07ba87e907143427b6e8505f",
+      "companyId": "greptile",
+      "promptId": "07ba87e907143427b6e8505f",
+      "text": "We're evaluating AI code review platforms but our team lives in GitLab—which vendors actually support it well?",
+      "evidenceIds": [
+        "57dff4dbe1ec983af90a0d4b",
+        "e10142b4b3884e53740a5c76",
+        "c9d24cccbaaf2d84dd829e2e",
+        "1229821a9d6b1f394b97fecc"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:25d90ded6f9eace5f47eb847",
+      "companyId": "reducto",
+      "promptId": "25d90ded6f9eace5f47eb847",
+      "text": "Which document platforms can process highly structured legal filings with citation-backed, defensible outputs for review?",
+      "evidenceIds": [
+        "d99dbfc1dbd029f61b913817",
+        "36f6453d72d19a2353b4f1f5",
+        "cd17b16195bcb1da83f6a162",
+        "a8524205f2ab5ee0215eb63f"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "demand-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:b3e7b5f4722f7f47f7a965b3",
+      "companyId": "rootly",
+      "promptId": "b3e7b5f4722f7f47f7a965b3",
+      "text": "What tools offer advanced incident metrics and insights for tracking process improvements over time?",
+      "evidenceIds": [
+        "ae501f1a0cdaf769b9c88d06",
+        "a86fac8562719fd661372509",
+        "ae2ea87a69da50706e16adaa",
+        "f209b74db9284856ab7dcae0",
+        "0e4f66e3ea61d93e0cfa50d1",
+        "cd12622843b280dc23813a40",
+        "929001c2c276f739834d9f50",
+        "44f9dfd25c2221248a108666"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "supermemory:f7617abc4a82e0ff451af1ad",
+      "companyId": "supermemory",
+      "promptId": "f7617abc4a82e0ff451af1ad",
+      "text": "What memory systems can ingest links and documents alongside conversations?",
+      "evidenceIds": [
+        "0ca7bae1c8fc23a8f446681d",
+        "a4b662e195611f1ff46f7ede",
+        "ad47d19d37e4e9e9a582e25f",
+        "e8dae30f1f5c4ab73fb3b4f0",
+        "c12f37cbbbe4241935b8b72d",
+        "fe46315216ae634c11fdde15"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:cfc9dc708c14f19e0b6029cd",
+      "companyId": "domain-posthog-com",
+      "promptId": "cfc9dc708c14f19e0b6029cd",
+      "text": "We need a way to watch real user sessions to debug issues instead of relying only on logs, what should we consider?",
+      "evidenceIds": [
+        "19f0d9fc4b348f0d7c0af25e",
+        "c77b9b7439f8b8b9ac3f032c"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:8faa2bd6ce6200423df1cf62",
+      "companyId": "greptile",
+      "promptId": "8faa2bd6ce6200423df1cf62",
+      "text": "How do AI PR review tools compare when it comes to GitLab integration versus GitHub-only support?",
+      "evidenceIds": [
+        "433ccb1e3d799c870e8df94a",
+        "e10142b4b3884e53740a5c76",
+        "c9d24cccbaaf2d84dd829e2e",
+        "57dff4dbe1ec983af90a0d4b",
+        "1229821a9d6b1f394b97fecc",
+        "2b4d411029663341bf86964b"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:457bfa8da43ca7b24e3d991c",
+      "companyId": "reducto",
+      "promptId": "457bfa8da43ca7b24e3d991c",
+      "text": "Are there tools that handle complex legal document structure without needing templates or custom model training?",
+      "evidenceIds": [
+        "28bb0c59dcb6a5c8886e0395",
+        "b3a51a766009928f29edf8da",
+        "c979277be1b9ac2b24fa744e",
+        "bf8deb4ee98863394b2a05f7",
+        "d99dbfc1dbd029f61b913817",
+        "36f6453d72d19a2353b4f1f5",
+        "50046e4fc35dbaad5e82cafb",
+        "a2d5144651eafd2be525fe66"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:624a903cb817675cc30a91af",
+      "companyId": "rootly",
+      "promptId": "624a903cb817675cc30a91af",
+      "text": "Which vendors provide the most detailed MTTR reporting for engineering leadership teams?",
+      "evidenceIds": [
+        "a86fac8562719fd661372509",
+        "ae2ea87a69da50706e16adaa",
+        "ae501f1a0cdaf769b9c88d06"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "supermemory:72db38f4be7128bb45200242",
+      "companyId": "supermemory",
+      "promptId": "72db38f4be7128bb45200242",
+      "text": "What memory infrastructure works across multiple agent frameworks and SDKs?",
+      "evidenceIds": [
+        "ceac04ddd5d879bbebd71eea",
+        "fcde69d607a54554e3d90754",
+        "05143454a49eefcce70c8a6d",
+        "4877dc4c05661a15fa1b7b44",
+        "b6e97ca76d7007abdbee6a76",
+        "28f3d1f68bb8c64c6f6ab272"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:444a053f97940f2356040bc4",
+      "companyId": "domain-posthog-com",
+      "promptId": "444a053f97940f2356040bc4",
+      "text": "What product analytics tools should a growing startup evaluate to track user engagement and conversion?",
+      "evidenceIds": [
+        "19f0d9fc4b348f0d7c0af25e",
+        "ba543578b739469f101a0565",
+        "615dfb5922f4ccfb9fe26aa2"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:6f446ed8e9dd2170dbbf4614",
+      "companyId": "greptile",
+      "promptId": "6f446ed8e9dd2170dbbf4614",
+      "text": "What's the best AI code review tool for defining custom review rules that match our organization's internal policies?",
+      "evidenceIds": [
+        "7863d6211312b1a2cb2149ff",
+        "6806742723f21bcc2ceea212",
+        "d6ebd7f9e5be8db8490aa5c1"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "model-unsupported",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:493fdf52f863f7d15979fb68",
+      "companyId": "reducto",
+      "promptId": "493fdf52f863f7d15979fb68",
+      "text": "What's the best layout-aware document parsing tool for handling multi-column PDFs reliably?",
+      "evidenceIds": [
+        "96ec941bad0306708228c000",
+        "bf8deb4ee98863394b2a05f7",
+        "536d8a158c2c912075736abc",
+        "d6bf6287fa23f8520aabcfb5"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "model-unsupported",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:86652a59a267f1739623b17a",
+      "companyId": "rootly",
+      "promptId": "86652a59a267f1739623b17a",
+      "text": "What platforms help platform teams coordinate on-call response and escalation across services?",
+      "evidenceIds": [
+        "6f9437851193e5c430a970a2",
+        "5d935e1a5c3afbd4cd4d6ee3",
+        "2ab376d9c020aac285da3fb3"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "supermemory:ab3c0a63aed1b12e4043e7c8",
+      "companyId": "supermemory",
+      "promptId": "ab3c0a63aed1b12e4043e7c8",
+      "text": "What agent memory platforms support updating and forgetting stale user information?",
+      "evidenceIds": [
+        "62816a44befe89d0661bc164",
+        "84f83d0be75480b5daa0e542",
+        "4a07e56b3d9d07946cd8203a",
+        "fa8f18f83713c99c8f156db8",
+        "6a56a5dac54c5eb2f823df72",
+        "4067ef38ee65e967075ab873"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:bbcb9ca71911e4119cd05cc6",
+      "companyId": "domain-posthog-com",
+      "promptId": "bbcb9ca71911e4119cd05cc6",
+      "text": "Which analytics platforms let us minimize personal data collection while still tracking product usage?",
+      "evidenceIds": [
+        "8cdbad8324280eb632ddf05e",
+        "52f5bd02ea3e33f2c630c917"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:95eac3c69f4d02e805ddc44d",
+      "companyId": "greptile",
+      "promptId": "95eac3c69f4d02e805ddc44d",
+      "text": "We need to enforce organization-specific coding standards automatically—which AI review platforms support custom rule configuration?",
+      "evidenceIds": [
+        "d6ebd7f9e5be8db8490aa5c1",
+        "07cdd87102b9f05f1dcb9995",
+        "c0df61866824441b043a7c63",
+        "358c5a8a847e1480cfbc495c",
+        "7e37acb661df380c936176bf",
+        "7522d41717554de710c954c8",
+        "89c6896301de12e914873f10",
+        "7863d6211312b1a2cb2149ff"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:c5fdc436faf26cfc2d75bea1",
+      "companyId": "reducto",
+      "promptId": "c5fdc436faf26cfc2d75bea1",
+      "text": "How do I evaluate PDF parsing software so OCR doesn't struggle with complex layouts in RAG pipelines?",
+      "evidenceIds": [
+        "bf8deb4ee98863394b2a05f7",
+        "536d8a158c2c912075736abc",
+        "2c694a94d784c9a00ac36d70",
+        "f0218d6540c32fb6cb8fa48d",
+        "3a731ccebceffb636190579d",
+        "6b7b6c06f2ae9ab4ac16e49a",
+        "fd7af3ac1cd94fe221e90e45",
+        "2771eb0e1b9b295bca9baff1"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:9833c31c59acba4fddefb833",
+      "companyId": "rootly",
+      "promptId": "9833c31c59acba4fddefb833",
+      "text": "Which tools offer schedules, escalation policies, and shadow rotations for on-call teams?",
+      "evidenceIds": [
+        "6f9437851193e5c430a970a2",
+        "1cbfb51a264e9f0e9bbde2e3",
+        "76eb52fd266f54a5ad6e720d"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "supermemory:ea0b596c5223a697554d817f",
+      "companyId": "supermemory",
+      "promptId": "ea0b596c5223a697554d817f",
+      "text": "Which AI memory systems consolidate repeated or duplicate memories?",
+      "evidenceIds": [
+        "139939c9cd1849bcf440ef31",
+        "ca91e5ba90d5373bcce9a9ab",
+        "3da8f1da47fc21f311a7090d",
+        "0bb6fdc04edc9752322ed526",
+        "81cbba0409c710803f67966a",
+        "8287e6172f347dcac6be3b6e"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:2094d65f8722a0e92cf621f7",
+      "companyId": "domain-posthog-com",
+      "promptId": "2094d65f8722a0e92cf621f7",
+      "text": "How do teams consolidate feature flags, session replay, and analytics into one product analytics tool instead of juggling separate vendors?",
+      "evidenceIds": [
+        "ba543578b739469f101a0565",
+        "085f9877c89a38aacf2f0947",
+        "615dfb5922f4ccfb9fe26aa2",
+        "d3d39191d07b7facf11f6fc2",
+        "5b8ae05866f66cb470986d02"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:d6ffecef04f3016eadca2aa2",
+      "companyId": "greptile",
+      "promptId": "d6ffecef04f3016eadca2aa2",
+      "text": "How do different AI code review tools compare on flexibility for setting custom review policies?",
+      "evidenceIds": [
+        "6806742723f21bcc2ceea212",
+        "07cdd87102b9f05f1dcb9995",
+        "d6ebd7f9e5be8db8490aa5c1",
+        "41e44db629f3d6c52615c98a"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "model-unsupported",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:729aa7b614f7c863c7b3228c",
+      "companyId": "reducto",
+      "promptId": "729aa7b614f7c863c7b3228c",
+      "text": "Which document parsers preserve reading order and structure in dense, multi-column layouts?",
+      "evidenceIds": [
+        "bf8deb4ee98863394b2a05f7",
+        "d99dbfc1dbd029f61b913817",
+        "94da5bf6a94b134d0631c2bd",
+        "fd7af3ac1cd94fe221e90e45",
+        "d4e7cbbcbb896644b075c51a"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:239ebf62f2a04f34873b2abf",
+      "companyId": "rootly",
+      "promptId": "239ebf62f2a04f34873b2abf",
+      "text": "What alternatives exist for managing on-call escalation trees with gap detection and fallback coverage?",
+      "evidenceIds": [
+        "2ab376d9c020aac285da3fb3",
+        "6f9437851193e5c430a970a2",
+        "1cbfb51a264e9f0e9bbde2e3",
+        "0e3f7b5daf15a576514db7d2",
+        "d67be714f40dc46b35ba46e5",
+        "5dddaa8cb3f4ec540fa69e68",
+        "b70f0a2515ebc216957e8fc2",
+        "f2e7844e021886fbdc104b9f"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "supermemory:04361f6ff9bd2c3c41eff0ed",
+      "companyId": "supermemory",
+      "promptId": "04361f6ff9bd2c3c41eff0ed",
+      "text": "Which AI memory platforms support user-level deletion and privacy controls?",
+      "evidenceIds": [
+        "3a0c5e588823a39359a930a2",
+        "0a39b564edafe71ab2908c79",
+        "d876dd1498d814eeb7bb75af",
+        "f9c67795e93cb5711b273593",
+        "a89d8ebefb9fb3778da55309",
+        "012fa06b2e3efc8bf4800bd0"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:8ee92b9202e0eebe90923c18",
+      "companyId": "domain-posthog-com",
+      "promptId": "8ee92b9202e0eebe90923c18",
+      "text": "What analytics tools support group-based analysis for companies with both B2B and B2C customers?",
+      "evidenceIds": [
+        "4f304c530600bf6cf8463111",
+        "19f0d9fc4b348f0d7c0af25e",
+        "06b5b983db133cea556f8ae5",
+        "615dfb5922f4ccfb9fe26aa2",
+        "643fe5a5cd7e318370cb9ea9",
+        "085f9877c89a38aacf2f0947",
+        "52f5bd02ea3e33f2c630c917"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent",
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:0c6fd53aa5a34bf314ee155d",
+      "companyId": "greptile",
+      "promptId": "0c6fd53aa5a34bf314ee155d",
+      "text": "What steps are involved in setting up custom review rules that reflect our team's engineering conventions?",
+      "evidenceIds": [
+        "41e44db629f3d6c52615c98a",
+        "07cdd87102b9f05f1dcb9995",
+        "7863d6211312b1a2cb2149ff",
+        "d6ebd7f9e5be8db8490aa5c1",
+        "7e37acb661df380c936176bf",
+        "358c5a8a847e1480cfbc495c",
+        "63f3ce707fc583006de60da2",
+        "7522d41717554de710c954c8"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:8d80d7c82b3fb18f64bd85df",
+      "companyId": "reducto",
+      "promptId": "8d80d7c82b3fb18f64bd85df",
+      "text": "What's the best document processing platform for high-volume batch ingestion at enterprise scale?",
+      "evidenceIds": [
+        "58abf7e3d185a39c287f4631",
+        "b40f4b6f1be782aad8fc8c9e",
+        "ce7d8363f989ba4acac3f1af",
+        "a1d2041a90e247566ab31dbc",
+        "368297ba84bb22a411b7c881"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:b710d49c09eb8cbd0d40571b",
+      "companyId": "rootly",
+      "promptId": "b710d49c09eb8cbd0d40571b",
+      "text": "What are the best incident analytics and reporting tools for tracking MTTR and process metrics?",
+      "evidenceIds": [
+        "a86fac8562719fd661372509",
+        "ae2ea87a69da50706e16adaa",
+        "44f9dfd25c2221248a108666"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "supermemory:832751042e38b3b169f1b9c9",
+      "companyId": "supermemory",
+      "promptId": "832751042e38b3b169f1b9c9",
+      "text": "What AI memory systems retrieve relevant context from long conversation histories?",
+      "evidenceIds": [
+        "7efe446b1f900fd8a35cabed",
+        "9750e9486cd9c36164af6cdb",
+        "13dc137159ec2517d8e89afe",
+        "c787e955c123f823f6cf0031",
+        "197c50650df9a5767891ccc1",
+        "ec15a9a3677fcdd3fe61c8fb"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:b8676689daec75b416e3c52e",
+      "companyId": "domain-posthog-com",
+      "promptId": "b8676689daec75b416e3c52e",
+      "text": "Which platforms offer feature flags and A/B testing together for gradual feature rollouts?",
+      "evidenceIds": [
+        "5b8ae05866f66cb470986d02",
+        "413d261838024df606f11a7c",
+        "d3d39191d07b7facf11f6fc2"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:68545db1c7be9ebf51f737a7",
+      "companyId": "greptile",
+      "promptId": "68545db1c7be9ebf51f737a7",
+      "text": "Which AI code review tools do engineering teams actually trust enough to keep using long-term?",
+      "evidenceIds": [
+        "49bcfa91a59215323a86738d",
+        "aef528912d0055ec1a67b811",
+        "8da081790115aae0c4604fde",
+        "57dff4dbe1ec983af90a0d4b",
+        "6e0cd4d51ffb9904e60a3895",
+        "7e37acb661df380c936176bf",
+        "c7ff7dde8dfa1d51aed94113",
+        "b0492c31aaaf8288a551c08b"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:9172900d62c95e0751921fbb",
+      "companyId": "reducto",
+      "promptId": "9172900d62c95e0751921fbb",
+      "text": "How should we evaluate document processing platforms against enterprise security and scale requirements?",
+      "evidenceIds": [
+        "ce7d8363f989ba4acac3f1af",
+        "fac4f0437ad0c9af44c7a078",
+        "14d58f2347890f6229a3b290",
+        "384b27628f065b5fa0ad5808",
+        "8acdb244ab776eba72a93f42"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:adbeef15bb77d51b18e1974b",
+      "companyId": "rootly",
+      "promptId": "adbeef15bb77d51b18e1974b",
+      "text": "Which platforms provide advanced metrics and insights alongside incident response workflows?",
+      "evidenceIds": [
+        "a86fac8562719fd661372509",
+        "ae2ea87a69da50706e16adaa",
+        "f209b74db9284856ab7dcae0"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "supermemory:bdffb71dc513e3a39bb99da1",
+      "companyId": "supermemory",
+      "promptId": "bdffb71dc513e3a39bb99da1",
+      "text": "Which managed memory APIs are easiest to add to an existing AI application?",
+      "evidenceIds": [
+        "4eb9b834e7ae141d174cb9e3",
+        "aa90433ca68f996a17210709",
+        "792bbea9613624af74f8c57f",
+        "2f7b919868f0318caf7a1168",
+        "54e867815f64b18271558da8",
+        "556a5b609ccb11083d73058b"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:06d4bd896e289afa4c0f7944",
+      "companyId": "domain-posthog-com",
+      "promptId": "06d4bd896e289afa4c0f7944",
+      "text": "We want to identify where users drop off in a flow and test fixes with feature flags, what tools handle both?",
+      "evidenceIds": [
+        "de4840f290cc3aeb1276796b",
+        "615dfb5922f4ccfb9fe26aa2",
+        "085f9877c89a38aacf2f0947",
+        "ea082249924dea937952ea47",
+        "13a3cc0007eca6bad6b8cda2",
+        "be95a7510ae42bb2a680cd2d",
+        "5b8ae05866f66cb470986d02"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent",
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:92a32a787baa1ebc62113eca",
+      "companyId": "greptile",
+      "promptId": "92a32a787baa1ebc62113eca",
+      "text": "As an engineering leader, how do I pick an AI review tool that developers won't just ignore or disable?",
+      "evidenceIds": [
+        "ee6e4cbc642463abbfff2a4e",
+        "aef528912d0055ec1a67b811",
+        "f323a01e9b8d858a3ff927bf",
+        "bf41231dd8e181953dfd532a",
+        "6e0cd4d51ffb9904e60a3895",
+        "7e37acb661df380c936176bf",
+        "0bd56a5add53ab7844da5810",
+        "e8fafd3fd9a1f1f87d634732"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:489e8dcf271ddc94214c91cf",
+      "companyId": "reducto",
+      "promptId": "489e8dcf271ddc94214c91cf",
+      "text": "Which vendors can reliably process billions of pages in production for large-scale document ingestion?",
+      "evidenceIds": [
+        "58abf7e3d185a39c287f4631",
+        "b40f4b6f1be782aad8fc8c9e",
+        "5b72313c9f6f7f9919e1c076",
+        "de9ffd3cbcea2b5fb28cb298",
+        "d99dbfc1dbd029f61b913817"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:05ead87c6de4d74e9d4471db",
+      "companyId": "rootly",
+      "promptId": "05ead87c6de4d74e9d4471db",
+      "text": "What incident management vendors bundle response, on-call, and analytics for growing engineering orgs?",
+      "evidenceIds": [
+        "b70f0a2515ebc216957e8fc2",
+        "0e4f66e3ea61d93e0cfa50d1",
+        "bdbece01114adfd601581b90",
+        "ae501f1a0cdaf769b9c88d06",
+        "1dd609e5bef4eb9a8645d5af",
+        "0e3f7b5daf15a576514db7d2",
+        "5357dc6597099e5e2ea72ec1",
+        "938adc73370be444627b7d80"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "supermemory:38ae8733d06dd9b25a499c9a",
+      "companyId": "supermemory",
+      "promptId": "38ae8733d06dd9b25a499c9a",
+      "text": "What memory infrastructure lets multiple agents share user context safely?",
+      "evidenceIds": [
+        "51e65052109dc3d459091482",
+        "c4118eb064a29a24850d6e65",
+        "0d569e55a0861603d345400e",
+        "78dc3697e605cfb97ddf0fec",
+        "be931c6866a010adc5063ed5",
+        "cb982a43a4c7b4f7ec0b8642"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:248ef0c0751318a09009a73e",
+      "companyId": "domain-posthog-com",
+      "promptId": "248ef0c0751318a09009a73e",
+      "text": "What vendors provide responsive engineering support when implementing feature flags for a product rollout?",
+      "evidenceIds": [
+        "13a3cc0007eca6bad6b8cda2",
+        "ba543578b739469f101a0565",
+        "8cdbad8324280eb632ddf05e",
+        "615dfb5922f4ccfb9fe26aa2",
+        "be95a7510ae42bb2a680cd2d",
+        "d3d39191d07b7facf11f6fc2"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent",
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:a7e5a81e7fbbb2f937268fef",
+      "companyId": "greptile",
+      "promptId": "a7e5a81e7fbbb2f937268fef",
+      "text": "What's the difference between AI code review tools in terms of actual developer adoption rates?",
+      "evidenceIds": [
+        "14e7284b18e6058583acf1da",
+        "aef528912d0055ec1a67b811",
+        "b2792a4a6671cec8877e15cd",
+        "e8fafd3fd9a1f1f87d634732",
+        "8f250579a25d99225de33377",
+        "02cb6da4db4b06406d85f0bc",
+        "602da07e3238ce0631701b08",
+        "7a2a25113d694cde33af1368"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:55c9d3f2e755c74988175fa4",
+      "companyId": "reducto",
+      "promptId": "55c9d3f2e755c74988175fa4",
+      "text": "Which document processing APIs offer predictable retries and reliable status tracking for production pipelines?",
+      "evidenceIds": [
+        "2e805d2abe9eaa33965e3111",
+        "ccff227304617f509b7ccebc",
+        "18bbc979d5a87344f94ae1d1",
+        "6845ab5286845cd11266f8ee"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "model-unsupported",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:f28c2458f48de0a2ed16ef65",
+      "companyId": "rootly",
+      "promptId": "f28c2458f48de0a2ed16ef65",
+      "text": "Which tools provide contextual incident runbooks for time-critical response situations?",
+      "evidenceIds": [
+        "1536d1924ce7306a4e37de70",
+        "51e311bc52a004fa2fac2804",
+        "efe2391a8c4c1dc089c8fb0c"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "model-unsupported",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "supermemory:e90f20dd36cdee4e919efd5d",
+      "companyId": "supermemory",
+      "promptId": "e90f20dd36cdee4e919efd5d",
+      "text": "What are the best memory platforms for AI assistants that need context across sessions?",
+      "evidenceIds": [
+        "3205f458ff1d484304784553",
+        "84b86516f618c0f28e5e8247",
+        "5b137cda9d90448921b61b34",
+        "c4a872c76a1cd2f5ec830f29",
+        "52485d94331ba706fc8dad94",
+        "62247ee942272b8ed9e87bf3"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:92bc6845ca0c6afa97612c42",
+      "companyId": "domain-posthog-com",
+      "promptId": "92bc6845ca0c6afa97612c42",
+      "text": "What CDP or data pipeline tools integrate with 100+ external sources like Stripe and Postgres for a unified customer data view?",
+      "evidenceIds": [
+        "9f8449399b0efd702f8b182f",
+        "70fcb270fe5b0a28d9340a14",
+        "ee372beeada960ac65347e8c",
+        "d3d39191d07b7facf11f6fc2",
+        "f1974e13c549e9d8b83e0ed7",
+        "20da5ee5189b790005240b04"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent",
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:e37160ed5521c0a5757cb6d7",
+      "companyId": "greptile",
+      "promptId": "e37160ed5521c0a5757cb6d7",
+      "text": "What's the best AI code review platform for producing audit-ready review evidence in a regulated environment?",
+      "evidenceIds": [
+        "4f1fb2a0ec8fe2da84f6a2d5",
+        "90734b84ce306302ef39731a"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "model-unsupported",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:ff8bb44f3127e8cf287e2a8b",
+      "companyId": "reducto",
+      "promptId": "ff8bb44f3127e8cf287e2a8b",
+      "text": "How do I compare document AI platforms and APIs for cloud-native, transactional workflows without hidden failure modes?",
+      "evidenceIds": [
+        "18bbc979d5a87344f94ae1d1",
+        "1803082814782ef8c8f66a5b",
+        "8df5754983b9b972747bcf86",
+        "4e5336fcdfb00add2babd20b",
+        "d6bf6287fa23f8520aabcfb5",
+        "82afd7403099d0c9efb1389b",
+        "d32c03b23f2331e58a5989d1"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:e94fe7a2fad660366b367108",
+      "companyId": "rootly",
+      "promptId": "e94fe7a2fad660366b367108",
+      "text": "What platforms offer automated incident workflows to reduce manual coordination during outages?",
+      "evidenceIds": [
+        "25e953ceff4fc0549d89e592",
+        "58155f7c07ee12d39a5b8773",
+        "48bb2c7ebe7ea1871655c1a7",
+        "f2e7844e021886fbdc104b9f",
+        "8d97c29d8ee0d88df8956dcc",
+        "a7a0af35f97a4fff985ebed2",
+        "c2fe4e6777fa06de89dffd09",
+        "cfbf21dd6e321515533d8f9c"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "supermemory:e9d9257bc36fb414cb3310a0",
+      "companyId": "supermemory",
+      "promptId": "e9d9257bc36fb414cb3310a0",
+      "text": "How can I give an AI assistant persistent user memory without building it from scratch?",
+      "evidenceIds": [
+        "3205f458ff1d484304784553",
+        "84b86516f618c0f28e5e8247",
+        "5b137cda9d90448921b61b34",
+        "c4a872c76a1cd2f5ec830f29",
+        "52485d94331ba706fc8dad94",
+        "62247ee942272b8ed9e87bf3"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:63d3ee2fec1b8ce452a6ba3a",
+      "companyId": "domain-posthog-com",
+      "promptId": "63d3ee2fec1b8ce452a6ba3a",
+      "text": "Which data platforms support realtime event transformations like PII scrubbing and enrichment before storage?",
+      "evidenceIds": [
+        "ee372beeada960ac65347e8c"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "single-source",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:63388ecf87179f89d38d1da8",
+      "companyId": "greptile",
+      "promptId": "63388ecf87179f89d38d1da8",
+      "text": "We need our code review process to hold up under compliance audits—which tools handle this well?",
+      "evidenceIds": [
+        "96081b661b5a45d08d1f3fd3",
+        "90734b84ce306302ef39731a",
+        "807062ccea4d0d2457bee128",
+        "4f1fb2a0ec8fe2da84f6a2d5",
+        "656c94671c06c40c17f00904",
+        "75174cb7815826f16132e741"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "model-unsupported",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:276f5255aff226f5b4ba4fcd",
+      "companyId": "reducto",
+      "promptId": "276f5255aff226f5b4ba4fcd",
+      "text": "What document AI benchmarks show completion rates for long structured extraction tasks reliably?",
+      "evidenceIds": [
+        "82afd7403099d0c9efb1389b",
+        "d99dbfc1dbd029f61b913817",
+        "90bc92d86a755e8e1c0ca63a",
+        "1803082814782ef8c8f66a5b",
+        "248f9b404db1c80108a7cb3f",
+        "536d8a158c2c912075736abc",
+        "d32c03b23f2331e58a5989d1"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "missing-demand",
+        "not-buying-intent",
+        "missing-buying-demand",
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:c77a27c278db0f2e3f38fc12",
+      "companyId": "rootly",
+      "promptId": "c77a27c278db0f2e3f38fc12",
+      "text": "Which vendors support Slack-based incident automation with built-in runbooks?",
+      "evidenceIds": [
+        "c2fe4e6777fa06de89dffd09",
+        "f2e7844e021886fbdc104b9f",
+        "1536d1924ce7306a4e37de70"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "supermemory:8410d32cded47bd644a5b6d2",
+      "companyId": "supermemory",
+      "promptId": "8410d32cded47bd644a5b6d2",
+      "text": "Which agent memory tools explain why a particular memory was recalled?",
+      "evidenceIds": [
+        "4310fa8b78d073f2df74a37d",
+        "763054feb2840c7dd57a0047",
+        "e349a749153f94f091cce8ec",
+        "57dec57d8513fbde316b7cab",
+        "5954075055a1420e36ee5042",
+        "29f9597a693b525f3a1535e9"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:1c5159902e4a0b6783add1f1",
+      "companyId": "domain-posthog-com",
+      "promptId": "1c5159902e4a0b6783add1f1",
+      "text": "How do teams combine a built-in data warehouse with product analytics data without stitching together separate ETL tools?",
+      "evidenceIds": [
+        "70fcb270fe5b0a28d9340a14",
+        "9f8449399b0efd702f8b182f",
+        "615dfb5922f4ccfb9fe26aa2",
+        "d3d39191d07b7facf11f6fc2",
+        "20da5ee5189b790005240b04",
+        "ba543578b739469f101a0565",
+        "25e99923e572cea3d97ba8ee"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent",
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:26c287d80e47dca73fe82c9c",
+      "companyId": "greptile",
+      "promptId": "26c287d80e47dca73fe82c9c",
+      "text": "How do AI code review vendors compare on generating auditable trails for compliance purposes?",
+      "evidenceIds": [
+        "807062ccea4d0d2457bee128",
+        "90734b84ce306302ef39731a",
+        "bfa0416724b8e9836e0f50df",
+        "dcc1c262e723ad4505aeb470",
+        "e3bb7278fde02148e3abeaf0",
+        "f7294b87da0042789bf9900c"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "model-unsupported",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:e9cf973c8071146173b5ff1d",
+      "companyId": "reducto",
+      "promptId": "e9cf973c8071146173b5ff1d",
+      "text": "Which document intelligence platforms let developers integrate parsing into a product quickly with minimal setup?",
+      "evidenceIds": [
+        "2e805d2abe9eaa33965e3111",
+        "d8daaa950add45368930a6a2",
+        "d4e7eae683d2a7c45a596125",
+        "4a12123e6c4a25def815ceb8"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:6384d0a4d853f024b309dc5f",
+      "companyId": "rootly",
+      "promptId": "6384d0a4d853f024b309dc5f",
+      "text": "What tools provide incident-linked status pages for communicating with multiple audiences?",
+      "evidenceIds": [
+        "091e4ce86f47e343dbfd76b4",
+        "e77670ffbb4e685289b11610",
+        "8612597837cd1fa601aa573b",
+        "f209b74db9284856ab7dcae0",
+        "ae2ea87a69da50706e16adaa",
+        "938adc73370be444627b7d80",
+        "1cbfb51a264e9f0e9bbde2e3",
+        "1e2bf49e97de6e9805a12d56"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "supermemory:ea82b0b3ce9d83c948779663",
+      "companyId": "supermemory",
+      "promptId": "ea82b0b3ce9d83c948779663",
+      "text": "Which memory APIs have low enough retrieval latency for interactive AI assistants?",
+      "evidenceIds": [
+        "e7dfaab403fdf3fb72389806",
+        "9545474b5f648c1a6aca4105",
+        "c787e955c123f823f6cf0031",
+        "c8d2597e89d2ea43e5a6f29b",
+        "79da3cc9dd84d5e8df0853d0",
+        "b541b8fd8d6105a67a81fae6"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:5c32eedaf5521c559b19545f",
+      "companyId": "domain-posthog-com",
+      "promptId": "5c32eedaf5521c559b19545f",
+      "text": "What are the best open-source alternatives to proprietary analytics platforms like Amplitude or Mixpanel?",
+      "evidenceIds": [
+        "13f0a4aa589a12fe353ce2f1",
+        "ba543578b739469f101a0565"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:c58834f094f18eac16b792b7",
+      "companyId": "greptile",
+      "promptId": "c58834f094f18eac16b792b7",
+      "text": "What's the best AI tool to help engineers quickly understand unfamiliar legacy codebases during review?",
+      "evidenceIds": [
+        "de899a6dd9d317ed6381542d",
+        "caa700fc940c81dc77f7dbee",
+        "dd9d38267281fab435ff66e9",
+        "5a304444fd2db7255b5f8cd9",
+        "d5a78a1fa32a0d05cadf8846",
+        "5201bc1e3ef563813d1185a8",
+        "498a1e01f47413bf65b0fe04"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "model-unsupported",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:d5af840775ed4728a14ebd4d",
+      "companyId": "reducto",
+      "promptId": "d5af840775ed4728a14ebd4d",
+      "text": "How do platform engineers evaluate document toolkits for reliable API integration and predictable pipeline behavior?",
+      "evidenceIds": [
+        "18bbc979d5a87344f94ae1d1",
+        "d8daaa950add45368930a6a2",
+        "9ff0b25a987788d709b9ec25"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "model-unsupported",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:1d450f164a414e3629a05433",
+      "companyId": "rootly",
+      "promptId": "1d450f164a414e3629a05433",
+      "text": "Which platforms let customer-facing SaaS teams manage status page updates tied to live incidents?",
+      "evidenceIds": [
+        "1e2bf49e97de6e9805a12d56",
+        "f209b74db9284856ab7dcae0",
+        "57c322f2cadfa428797a7d8d",
+        "8612597837cd1fa601aa573b",
+        "e77670ffbb4e685289b11610",
+        "8d97c29d8ee0d88df8956dcc",
+        "587cb333272eef9b340ef12f",
+        "091e4ce86f47e343dbfd76b4"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:e19dbe3c06676146cb41eed0",
+      "companyId": "domain-posthog-com",
+      "promptId": "e19dbe3c06676146cb41eed0",
+      "text": "Which analytics tools let us connect our own data warehouse like Snowflake or BigQuery instead of a closed proprietary system?",
+      "evidenceIds": [
+        "f1974e13c549e9d8b83e0ed7",
+        "20da5ee5189b790005240b04"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:0ad70b618ed9310adb9dab25",
+      "companyId": "greptile",
+      "promptId": "0ad70b618ed9310adb9dab25",
+      "text": "Our engineers struggle onboarding onto old legacy code—what AI review tools actually explain the codebase context?",
+      "evidenceIds": [
+        "5a304444fd2db7255b5f8cd9",
+        "caa700fc940c81dc77f7dbee",
+        "de899a6dd9d317ed6381542d",
+        "dd9d38267281fab435ff66e9",
+        "d5a78a1fa32a0d05cadf8846",
+        "5201bc1e3ef563813d1185a8",
+        "498a1e01f47413bf65b0fe04"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "model-unsupported",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:85e9faa76cdfbcf3b4b561ee",
+      "companyId": "reducto",
+      "promptId": "85e9faa76cdfbcf3b4b561ee",
+      "text": "Which PDF-to-text tools support both cloud API and enterprise integration needs for AI ingestion?",
+      "evidenceIds": [
+        "d6bf6287fa23f8520aabcfb5",
+        "d8daaa950add45368930a6a2",
+        "2e805d2abe9eaa33965e3111",
+        "8df5754983b9b972747bcf86"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:2cc324b1a0894025711ff4df",
+      "companyId": "rootly",
+      "promptId": "2cc324b1a0894025711ff4df",
+      "text": "What incident management vendors include a built-in status page feature for enterprise scale?",
+      "evidenceIds": [
+        "091e4ce86f47e343dbfd76b4",
+        "a86fac8562719fd661372509",
+        "8612597837cd1fa601aa573b",
+        "f2e7844e021886fbdc104b9f",
+        "f209b74db9284856ab7dcae0",
+        "b70f0a2515ebc216957e8fc2",
+        "5357dc6597099e5e2ea72ec1",
+        "938adc73370be444627b7d80"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:a13e1425326a87fbe1e266eb",
+      "companyId": "domain-posthog-com",
+      "promptId": "a13e1425326a87fbe1e266eb",
+      "text": "How do open source analytics tools compare to proprietary ones for combining feature flags, replay, and analytics in one place?",
+      "evidenceIds": [
+        "5b8ae05866f66cb470986d02",
+        "ba543578b739469f101a0565",
+        "615dfb5922f4ccfb9fe26aa2",
+        "d3d39191d07b7facf11f6fc2"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:0dd957f54e7c90cd0f3a0b52",
+      "companyId": "greptile",
+      "promptId": "0dd957f54e7c90cd0f3a0b52",
+      "text": "How do AI code review tools compare in helping teams navigate legacy code they didn't originally write?",
+      "evidenceIds": [
+        "d5a78a1fa32a0d05cadf8846",
+        "caa700fc940c81dc77f7dbee",
+        "fe33b2da4cfec4aa05c1f9d9",
+        "dd9d38267281fab435ff66e9",
+        "de899a6dd9d317ed6381542d",
+        "5a304444fd2db7255b5f8cd9",
+        "5201bc1e3ef563813d1185a8"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "model-unsupported",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:44a3a7ba1b85eb159177b32c",
+      "companyId": "reducto",
+      "promptId": "44a3a7ba1b85eb159177b32c",
+      "text": "What document parsing tools produce best-in-class chunks that need little post-processing for RAG pipelines?",
+      "evidenceIds": [
+        "28df73490d290c3f0bcb68e5",
+        "368297ba84bb22a411b7c881",
+        "d8daaa950add45368930a6a2",
+        "d99dbfc1dbd029f61b913817"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:246848cab637bb1f766274eb",
+      "companyId": "rootly",
+      "promptId": "246848cab637bb1f766274eb",
+      "text": "Which incident management vendors offer bundled pricing for incident response, on-call, and AI SRE tools?",
+      "evidenceIds": [
+        "0e4f66e3ea61d93e0cfa50d1",
+        "b70f0a2515ebc216957e8fc2"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "model-unsupported",
+        "demand-not-entailed",
+        "model-unusable"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:2d4f0ecbba41e54d1ba21302",
+      "companyId": "domain-posthog-com",
+      "promptId": "2d4f0ecbba41e54d1ba21302",
+      "text": "Which analytics platforms use usage-based pricing instead of opaque value-based sales negotiations?",
+      "evidenceIds": [
+        "06b5b983db133cea556f8ae5"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "single-source",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:01b57f543fdc0238b2f5c68e",
+      "companyId": "greptile",
+      "promptId": "01b57f543fdc0238b2f5c68e",
+      "text": "What's the workflow for using AI code review to speed up understanding of an inherited legacy codebase?",
+      "evidenceIds": [
+        "5201bc1e3ef563813d1185a8",
+        "caa700fc940c81dc77f7dbee",
+        "8114f96caaf8f0c357e9aa29",
+        "dd9d38267281fab435ff66e9",
+        "8f250579a25d99225de33377",
+        "ae6b168812da06c06d864a81",
+        "880ece0bacc0d20cdcba0ede",
+        "725aed86288dbeb765acd351"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:8732805c4ed51344eee511f0",
+      "companyId": "reducto",
+      "promptId": "8732805c4ed51344eee511f0",
+      "text": "How can we build a document ingestion workflow that has predictable retries and status for RAG systems?",
+      "evidenceIds": [
+        "28df73490d290c3f0bcb68e5",
+        "8df5754983b9b972747bcf86",
+        "de9ffd3cbcea2b5fb28cb298",
+        "d8daaa950add45368930a6a2"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:d886e60d62f64223bcaccfa2",
+      "companyId": "rootly",
+      "promptId": "d886e60d62f64223bcaccfa2",
+      "text": "What platforms provide affordable per-user pricing for combined on-call and incident response coordination?",
+      "evidenceIds": [
+        "b70f0a2515ebc216957e8fc2",
+        "242190efb90375065ef271ee",
+        "1cbfb51a264e9f0e9bbde2e3"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:b86a8bfb9a359b61e9ca2fd6",
+      "companyId": "domain-posthog-com",
+      "promptId": "b86a8bfb9a359b61e9ca2fd6",
+      "text": "What tools offer transparent, usage-based pricing for teams needing product analytics, session replay, and feature flags together?",
+      "evidenceIds": [
+        "06b5b983db133cea556f8ae5",
+        "d3d39191d07b7facf11f6fc2",
+        "ba543578b739469f101a0565"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:28d5db10f6102ad4fcd9c62f",
+      "companyId": "greptile",
+      "promptId": "28d5db10f6102ad4fcd9c62f",
+      "text": "What's the best AI code review integration specifically built for GitLab-hosted repositories?",
+      "evidenceIds": [
+        "c9d24cccbaaf2d84dd829e2e",
+        "e10142b4b3884e53740a5c76",
+        "433ccb1e3d799c870e8df94a",
+        "2b4d411029663341bf86964b",
+        "25412a333b81277334ca44a4"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:cb9422eb832cbbdcbffe817e",
+      "companyId": "reducto",
+      "promptId": "cb9422eb832cbbdcbffe817e",
+      "text": "Which platforms offer SDKs, CLI, and agent-connectable servers for building document pipelines for RAG?",
+      "evidenceIds": [
+        "0f85fd399cf8fb9d144303d2",
+        "8df5754983b9b972747bcf86",
+        "d99dbfc1dbd029f61b913817",
+        "1803082814782ef8c8f66a5b",
+        "536d8a158c2c912075736abc",
+        "d8daaa950add45368930a6a2",
+        "92b65e125be4cbc49662b647",
+        "60122fdeda3d124c8edbc807"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "missing-buying-demand"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:031a45cc6fb623331a45ac1a",
+      "companyId": "rootly",
+      "promptId": "031a45cc6fb623331a45ac1a",
+      "text": "Which tools let platform teams bundle escalation and on-call features into one pricing plan?",
+      "evidenceIds": [
+        "b70f0a2515ebc216957e8fc2",
+        "1cbfb51a264e9f0e9bbde2e3",
+        "ddc6a7564e6a44629c0662fd"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:62aa29566d261ebebfc90c70",
+      "companyId": "domain-posthog-com",
+      "promptId": "62aa29566d261ebebfc90c70",
+      "text": "What analytics tools offer a generous free tier for early-stage startups without large budgets?",
+      "evidenceIds": [
+        "3492749762c1cbfde1d6adcf",
+        "ba543578b739469f101a0565",
+        "085f9877c89a38aacf2f0947",
+        "2bd42475a938e4f13dacd746",
+        "1ec61a3d6f293d5bfdccd156",
+        "01e237fb5c0c9f9b69527cac",
+        "615dfb5922f4ccfb9fe26aa2"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent",
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:e65f2f7475809a4958897616",
+      "companyId": "greptile",
+      "promptId": "e65f2f7475809a4958897616",
+      "text": "Our enterprise engineering org runs on GitLab—which AI code review tools natively integrate with it?",
+      "evidenceIds": [
+        "e10142b4b3884e53740a5c76",
+        "433ccb1e3d799c870e8df94a",
+        "a684eefca5056d69f22fe6d5",
+        "57dff4dbe1ec983af90a0d4b"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:19da8ca1a5b8afd0aa7c4d93",
+      "companyId": "reducto",
+      "promptId": "19da8ca1a5b8afd0aa7c4d93",
+      "text": "What's the best handwriting-aware extraction tool for mixed printed and handwritten insurance forms?",
+      "evidenceIds": [
+        "ab0928c11623122c99e964cb",
+        "134841689502685338e0694c",
+        "35deee86c395edd242d77f4a",
+        "94da5bf6a94b134d0631c2bd"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:93dd3581ac317d14abd8f9b7",
+      "companyId": "rootly",
+      "promptId": "93dd3581ac317d14abd8f9b7",
+      "text": "Which platforms support roles and multi-team coordination for on-call across many dependent services?",
+      "evidenceIds": [
+        "6f9437851193e5c430a970a2",
+        "5dddaa8cb3f4ec540fa69e68",
+        "99778b55795bd3d2d09327ca"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:b5ab1beed1675a42cd9f08a5",
+      "companyId": "domain-posthog-com",
+      "promptId": "b5ab1beed1675a42cd9f08a5",
+      "text": "Which product analytics platforms protect against unexpected price spikes from viral usage growth?",
+      "evidenceIds": [
+        "3492749762c1cbfde1d6adcf",
+        "8d838f5cefb2798174150c48"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "single-source",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:541c0b01b37bdebf19448c08",
+      "companyId": "greptile",
+      "promptId": "541c0b01b37bdebf19448c08",
+      "text": "How do GitLab-focused AI code review options compare to each other for enterprise teams?",
+      "evidenceIds": [
+        "e10142b4b3884e53740a5c76",
+        "25412a333b81277334ca44a4",
+        "8da081790115aae0c4604fde",
+        "57dff4dbe1ec983af90a0d4b"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:0fc9dc79d79fe7a9e6755274",
+      "companyId": "reducto",
+      "promptId": "0fc9dc79d79fe7a9e6755274",
+      "text": "Which document extraction systems perform best on difficult, high-field-count workloads involving handwriting?",
+      "evidenceIds": [
+        "35deee86c395edd242d77f4a",
+        "efa8a1472623c4f5b7ee6aaf",
+        "ab0928c11623122c99e964cb",
+        "3df72c42f87c1fb70c019055"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:e745de5c16d7af4a59dc75b4",
+      "companyId": "rootly",
+      "promptId": "e745de5c16d7af4a59dc75b4",
+      "text": "What tools offer AI-powered on-call scheduling and coverage requests for complex team structures?",
+      "evidenceIds": [
+        "d67be714f40dc46b35ba46e5",
+        "6f9437851193e5c430a970a2",
+        "1cbfb51a264e9f0e9bbde2e3",
+        "99778b55795bd3d2d09327ca",
+        "0e3f7b5daf15a576514db7d2",
+        "0e4f66e3ea61d93e0cfa50d1",
+        "b70f0a2515ebc216957e8fc2",
+        "5e4dec8799142a27dd02c72e"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:e3b0fec3629d2d050409b731",
+      "companyId": "domain-posthog-com",
+      "promptId": "e3b0fec3629d2d050409b731",
+      "text": "What tools let a small startup team build product tours and onboarding flows for free?",
+      "evidenceIds": [
+        "01e237fb5c0c9f9b69527cac",
+        "3492749762c1cbfde1d6adcf",
+        "643fe5a5cd7e318370cb9ea9",
+        "3738b78c94d441e16505c9bd",
+        "2bd42475a938e4f13dacd746",
+        "1f605cf5e7cc428d2720698a",
+        "6bf83867a2a60bd6439cc122"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent",
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:355167e267f6a2425489357f",
+      "companyId": "greptile",
+      "promptId": "355167e267f6a2425489357f",
+      "text": "What's the best AI code review tool for handling stacked pull requests in large engineering orgs?",
+      "evidenceIds": [
+        "d56b76f0e281b62d0f6ed797",
+        "f41810a232a3ecc0f44faf1b",
+        "e87f7a47d46c0d00a0f3ae4e",
+        "5fae9f127f82708430c589dc"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "model-unsupported",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:5d38bb89db68b314fb057504",
+      "companyId": "reducto",
+      "promptId": "5d38bb89db68b314fb057504",
+      "text": "How do I compare document AI accuracy for mixed handwritten and scanned forms across vendors?",
+      "evidenceIds": [
+        "35deee86c395edd242d77f4a",
+        "82afd7403099d0c9efb1389b",
+        "ab0928c11623122c99e964cb",
+        "051b898edb1cae4f105cbe58",
+        "94da5bf6a94b134d0631c2bd",
+        "d32c03b23f2331e58a5989d1",
+        "384b27628f065b5fa0ad5808",
+        "1803082814782ef8c8f66a5b"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:3e2c8b1b8cf09674764f060e",
+      "companyId": "rootly",
+      "promptId": "3e2c8b1b8cf09674764f060e",
+      "text": "Which vendors provide schedule gap detection and fallback paging for platform teams?",
+      "evidenceIds": [
+        "6f9437851193e5c430a970a2",
+        "d67be714f40dc46b35ba46e5",
+        "5d935e1a5c3afbd4cd4d6ee3",
+        "76eb52fd266f54a5ad6e720d",
+        "1c5fbe08c7a30db65e55490a"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:ec359abb268d9c9ff6f232d6",
+      "companyId": "domain-posthog-com",
+      "promptId": "ec359abb268d9c9ff6f232d6",
+      "text": "How do teams track usage of specific AI features within their product to see engagement by feature?",
+      "evidenceIds": [
+        "19f0d9fc4b348f0d7c0af25e",
+        "7627c8e0751242bda13e83b7",
+        "06b5b983db133cea556f8ae5",
+        "413d261838024df606f11a7c",
+        "f6673f399548116c505558cc",
+        "be95a7510ae42bb2a680cd2d",
+        "0da4ccab30510dc19fc6e2c7"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent",
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:b18808013fcb11001bb96e52",
+      "companyId": "greptile",
+      "promptId": "b18808013fcb11001bb96e52",
+      "text": "Our team relies heavily on stacked PR workflows—which AI review tools handle stacked changes well?",
+      "evidenceIds": [
+        "923ab26b613236311c5ca910",
+        "d56b76f0e281b62d0f6ed797",
+        "d9072e04db405d4ca3768c29",
+        "6df325dd6d6228587cdf7307"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "model-unsupported",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:ceb3fb9c64b1f11b1affbc90",
+      "companyId": "reducto",
+      "promptId": "ceb3fb9c64b1f11b1affbc90",
+      "text": "What's the best tool for extracting structured data from tables with merged cells and nested headers?",
+      "evidenceIds": [
+        "6b042e36265c03e1062cd001",
+        "f8fe41141f39a47ad92edc90",
+        "d99dbfc1dbd029f61b913817",
+        "b3a51a766009928f29edf8da"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:7f793f266ef8f159331a5872",
+      "companyId": "rootly",
+      "promptId": "7f793f266ef8f159331a5872",
+      "text": "What platforms provide permissioned incident workflows for handling sensitive security incidents?",
+      "evidenceIds": [
+        "929001c2c276f739834d9f50",
+        "a86fac8562719fd661372509",
+        "6187562e46e7713160d7eb71",
+        "0db53f517c32d208149c3c65",
+        "4b27704cd2e00b4d380c7510",
+        "c8599e19c97bf18e46962213",
+        "25e953ceff4fc0549d89e592",
+        "c2fe4e6777fa06de89dffd09"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:14f8449b8439f4da57b22767",
+      "companyId": "domain-posthog-com",
+      "promptId": "14f8449b8439f4da57b22767",
+      "text": "What analytics tools help an AI-first company monitor whether their AI features are performing well for users?",
+      "evidenceIds": [
+        "2b43d6b4c0da86717a95c660",
+        "615dfb5922f4ccfb9fe26aa2",
+        "19f0d9fc4b348f0d7c0af25e",
+        "ba543578b739469f101a0565",
+        "52f5bd02ea3e33f2c630c917",
+        "be95a7510ae42bb2a680cd2d",
+        "085f9877c89a38aacf2f0947"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent",
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:1ade76e438d9d1f4df83949b",
+      "companyId": "greptile",
+      "promptId": "1ade76e438d9d1f4df83949b",
+      "text": "How do code review platforms compare when reviewing stacked or dependent pull requests?",
+      "evidenceIds": [
+        "6df325dd6d6228587cdf7307",
+        "5d0e8913e91086ee43c9dcd0",
+        "e87f7a47d46c0d00a0f3ae4e",
+        "110fcb65629daa6015831127"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "model-unsupported",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:ce1c88d4e8d6c3d8dd50b427",
+      "companyId": "reducto",
+      "promptId": "ce1c88d4e8d6c3d8dd50b427",
+      "text": "Which OCR or extraction APIs handle complex financial tables with grounding and high completion rates?",
+      "evidenceIds": [
+        "f8fe41141f39a47ad92edc90",
+        "4058bf60476be9b0ad9c2565",
+        "90bc92d86a755e8e1c0ca63a",
+        "2771eb0e1b9b295bca9baff1"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:9b9600d025eefdfb838abe3d",
+      "companyId": "rootly",
+      "promptId": "9b9600d025eefdfb838abe3d",
+      "text": "Which incident management tools offer role-based access control for security operations teams?",
+      "evidenceIds": [
+        "a86fac8562719fd661372509",
+        "4b27704cd2e00b4d380c7510",
+        "e5183ff040b73595abfc984a",
+        "6187562e46e7713160d7eb71"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:ca9b61a9c8f0e25da50c5c69",
+      "companyId": "domain-posthog-com",
+      "promptId": "ca9b61a9c8f0e25da50c5c69",
+      "text": "Which platforms provide an AI assistant that can answer product data questions like a data scientist on demand?",
+      "evidenceIds": [
+        "dbc0a932ef39134a2d3b358d",
+        "1f605cf5e7cc428d2720698a"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:cffa389574a084fe32823536",
+      "companyId": "greptile",
+      "promptId": "cffa389574a084fe32823536",
+      "text": "What's the best automated pull-request review tool for teams that need fast feedback on every PR?",
+      "evidenceIds": [
+        "0f66b384f50a6282e0d69e68",
+        "738871240d0035b5095f80bf",
+        "43954f4f62cea8b7bce9b8c0",
+        "65d503c39b7f11ae7143a7b4"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:7648703a13df6f87b055ff83",
+      "companyId": "reducto",
+      "promptId": "7648703a13df6f87b055ff83",
+      "text": "How should financial data teams evaluate table extraction software for complex, nested spreadsheet structures?",
+      "evidenceIds": [
+        "f8fe41141f39a47ad92edc90",
+        "4058bf60476be9b0ad9c2565",
+        "32cf7c779c8a15853324dd71",
+        "2e8be235b72dbec76db054c3"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:ac212981b86068ace1f1b6da",
+      "companyId": "rootly",
+      "promptId": "ac212981b86068ace1f1b6da",
+      "text": "What vendors combine security-focused incident response with SSO and SAML for enterprise scale?",
+      "evidenceIds": [
+        "c8599e19c97bf18e46962213",
+        "a86fac8562719fd661372509",
+        "920de1227f2d5894cf103034",
+        "51e311bc52a004fa2fac2804",
+        "f209b74db9284856ab7dcae0",
+        "0e4f66e3ea61d93e0cfa50d1",
+        "b8f373177edda3c1e68a7335",
+        "8d97c29d8ee0d88df8956dcc"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:b82243706f7cb97df995b3f7",
+      "companyId": "domain-posthog-com",
+      "promptId": "b82243706f7cb97df995b3f7",
+      "text": "What data platforms let LLM agents query product usage and customer data via MCP or similar protocols?",
+      "evidenceIds": [
+        "d469a59dd7c3b3a1dd672505",
+        "9f8449399b0efd702f8b182f",
+        "19f0d9fc4b348f0d7c0af25e",
+        "8cdbad8324280eb632ddf05e",
+        "643fe5a5cd7e318370cb9ea9",
+        "52f5bd02ea3e33f2c630c917",
+        "f6673f399548116c505558cc",
+        "dba65814fb18d5c3b25e5782"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent",
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:3ab77b51b615c05fbc44d2b6",
+      "companyId": "greptile",
+      "promptId": "3ab77b51b615c05fbc44d2b6",
+      "text": "We're a high-velocity team drowning in PRs—which AI review tools actually speed up turnaround time?",
+      "evidenceIds": [
+        "43954f4f62cea8b7bce9b8c0",
+        "efc7568952ec5ad0ee5499ea",
+        "71b123e6514ad4c428fd668c"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:c21534fcfb5d5352f58d16d9",
+      "companyId": "reducto",
+      "promptId": "c21534fcfb5d5352f58d16d9",
+      "text": "What tools can reliably split and process 300+ page documents that include handwritten and scanned content?",
+      "evidenceIds": [
+        "48c51e7cd585c83a1e0bf437",
+        "94da5bf6a94b134d0631c2bd",
+        "9494fd07d6570a065c587844",
+        "5cff6caef45ae607cca72484",
+        "d8daaa950add45368930a6a2",
+        "d99dbfc1dbd029f61b913817",
+        "0f19844da24c36d1536530ec"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:b1303b545c119784105e2e9d",
+      "companyId": "rootly",
+      "promptId": "b1303b545c119784105e2e9d",
+      "text": "Which incident management platforms support isolated tenants for full InfoSec separation?",
+      "evidenceIds": [
+        "52c917d690577ce075f6f1cb",
+        "58eebd21b51e316b850f39ff"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "demand-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:97b6993ee177b105c3a90746",
+      "companyId": "domain-posthog-com",
+      "promptId": "97b6993ee177b105c3a90746",
+      "text": "Which analytics tools give AI agents context from sources like Stripe and session replays to make better decisions?",
+      "evidenceIds": [
+        "9f8449399b0efd702f8b182f"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:1a9f6861977aedd82cca7878",
+      "companyId": "greptile",
+      "promptId": "1a9f6861977aedd82cca7878",
+      "text": "How do different automated code review tools compare on review turnaround speed?",
+      "evidenceIds": [
+        "65d503c39b7f11ae7143a7b4",
+        "0f66b384f50a6282e0d69e68",
+        "bf41231dd8e181953dfd532a",
+        "1a0a15946c7f0f2744e56b74"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "model-unsupported",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:3f86b698e65fb27cd0ee147f",
+      "companyId": "reducto",
+      "promptId": "3f86b698e65fb27cd0ee147f",
+      "text": "How do enterprise data teams handle high-volume ingestion of very long, mixed-format documents?",
+      "evidenceIds": [
+        "ce7d8363f989ba4acac3f1af",
+        "94da5bf6a94b134d0631c2bd",
+        "e4eaa1272b75ae56ec5207cd",
+        "93312441e5fb470921db7342",
+        "248f9b404db1c80108a7cb3f",
+        "a8524205f2ab5ee0215eb63f",
+        "c95833c20804cb5a48df55b3",
+        "365844c0499aee3e137ccd57"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:224d10b5fb02ed04bbb2d1a8",
+      "companyId": "rootly",
+      "promptId": "224d10b5fb02ed04bbb2d1a8",
+      "text": "What tools offer governance-as-code and IaC-native provisioning for compliance-driven security teams?",
+      "evidenceIds": [
+        "58eebd21b51e316b850f39ff",
+        "52c917d690577ce075f6f1cb",
+        "a24d08bd6e2e9d11e86eeb48",
+        "6187562e46e7713160d7eb71",
+        "7d14a81af81540522cf6d29e",
+        "c28c5586790bb7323063b47d",
+        "53a5ca1ce01c882668589a02",
+        "0db53f517c32d208149c3c65"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:6bb6134a5cc1e15465f9a0fd",
+      "companyId": "domain-posthog-com",
+      "promptId": "6bb6134a5cc1e15465f9a0fd",
+      "text": "What tools support connecting coding agents like Cursor or Claude directly to product analytics data via MCP?",
+      "evidenceIds": [
+        "d469a59dd7c3b3a1dd672505",
+        "52f5bd02ea3e33f2c630c917",
+        "615dfb5922f4ccfb9fe26aa2",
+        "8cdbad8324280eb632ddf05e",
+        "643fe5a5cd7e318370cb9ea9",
+        "3738b78c94d441e16505c9bd"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent",
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:0091d7322eb309b5634d6eaf",
+      "companyId": "greptile",
+      "promptId": "0091d7322eb309b5634d6eaf",
+      "text": "What AI code review tools have the best track record of actually getting adopted by engineering teams?",
+      "evidenceIds": [
+        "ee6e4cbc642463abbfff2a4e",
+        "c7ff7dde8dfa1d51aed94113",
+        "0bd56a5add53ab7844da5810",
+        "dd9d38267281fab435ff66e9"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "model-unsupported",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:e3136c7e313de39b2b4a3ec2",
+      "companyId": "reducto",
+      "promptId": "e3136c7e313de39b2b4a3ec2",
+      "text": "Which document platforms combine enterprise security and audit-ability with high-volume batch processing?",
+      "evidenceIds": [
+        "58abf7e3d185a39c287f4631",
+        "48c51e7cd585c83a1e0bf437",
+        "ce7d8363f989ba4acac3f1af",
+        "5680b820e2a23164bb568ead"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:1f8f9e4a5e4504c5178e020f",
+      "companyId": "rootly",
+      "promptId": "1f8f9e4a5e4504c5178e020f",
+      "text": "Which vendors provide certified compliance standards alongside contextual incident runbooks?",
+      "evidenceIds": [
+        "58eebd21b51e316b850f39ff",
+        "1536d1924ce7306a4e37de70",
+        "51e311bc52a004fa2fac2804",
+        "58155f7c07ee12d39a5b8773"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:8b8b4d6d46a181942d1c4442",
+      "companyId": "domain-posthog-com",
+      "promptId": "8b8b4d6d46a181942d1c4442",
+      "text": "What analytics platforms include a built-in data warehouse with SQL editor and BI tools instead of needing a separate warehouse?",
+      "evidenceIds": [
+        "70fcb270fe5b0a28d9340a14",
+        "1ca8ed60aee1d9c0c1b2a1e9",
+        "615dfb5922f4ccfb9fe26aa2",
+        "20da5ee5189b790005240b04",
+        "085f9877c89a38aacf2f0947",
+        "643fe5a5cd7e318370cb9ea9",
+        "dba65814fb18d5c3b25e5782"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent",
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:717018763f4a878502dacd05",
+      "companyId": "greptile",
+      "promptId": "717018763f4a878502dacd05",
+      "text": "As an engineering leader rolling out an AI review tool, how do I ensure developers actually trust and use it?",
+      "evidenceIds": [
+        "e8fafd3fd9a1f1f87d634732",
+        "aef528912d0055ec1a67b811",
+        "ee3377c5b6550bde3dfb8b2b",
+        "0bd56a5add53ab7844da5810",
+        "6e0cd4d51ffb9904e60a3895",
+        "7e37acb661df380c936176bf",
+        "bf41231dd8e181953dfd532a",
+        "02cb6da4db4b06406d85f0bc"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:4305d14c0198e40e94ecb3ef",
+      "companyId": "reducto",
+      "promptId": "4305d14c0198e40e94ecb3ef",
+      "text": "How do I evaluate document processing platforms for both security compliance and enterprise scale needs?",
+      "evidenceIds": [
+        "fac4f0437ad0c9af44c7a078",
+        "d99dbfc1dbd029f61b913817",
+        "8235c29ae6fc65ba10165bd9",
+        "384b27628f065b5fa0ad5808",
+        "371e78f7da3c5a72380dda76",
+        "4e5336fcdfb00add2babd20b",
+        "ba6d9faebcba4810c9db35e8",
+        "7e7c2d31d5ee0c3988b084d6"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "missing-demand",
+        "not-buying-intent",
+        "missing-buying-demand"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:f5122470cf4175d658eac248",
+      "companyId": "rootly",
+      "promptId": "f5122470cf4175d658eac248",
+      "text": "What platforms provide custom incident types and private incidents for sensitive investigations?",
+      "evidenceIds": [
+        "929001c2c276f739834d9f50",
+        "8d97c29d8ee0d88df8956dcc",
+        "6187562e46e7713160d7eb71",
+        "ea004a8dcc5e948b23af1436",
+        "90c459759ad0d2facd89c4e9",
+        "c8599e19c97bf18e46962213",
+        "25e953ceff4fc0549d89e592",
+        "1cbfb51a264e9f0e9bbde2e3"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:e6cd7c361ac073ca117787fd",
+      "companyId": "domain-posthog-com",
+      "promptId": "e6cd7c361ac073ca117787fd",
+      "text": "Which tools let us query product usage data natively alongside a data warehouse without exporting to external BI software?",
+      "evidenceIds": [
+        "70fcb270fe5b0a28d9340a14",
+        "20da5ee5189b790005240b04",
+        "f1974e13c549e9d8b83e0ed7"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:b354e038102479eefc8c7766",
+      "companyId": "greptile",
+      "promptId": "b354e038102479eefc8c7766",
+      "text": "How do AI code review tools compare in terms of developer buy-in and daily usage?",
+      "evidenceIds": [
+        "ee3377c5b6550bde3dfb8b2b",
+        "e8fafd3fd9a1f1f87d634732",
+        "26bb36f21fa3d44090226b53",
+        "a40544bf4a536d43021056d0"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "model-unsupported",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:d80e1d9d120ac73a386ed4e2",
+      "companyId": "reducto",
+      "promptId": "d80e1d9d120ac73a386ed4e2",
+      "text": "How do I compare intelligent document processing software across accuracy, security, and throughput for enterprise use?",
+      "evidenceIds": [
+        "384b27628f065b5fa0ad5808",
+        "01d16aa2f1ea10f8690c4765",
+        "14d58f2347890f6229a3b290",
+        "4e5336fcdfb00add2babd20b",
+        "6b7b6c06f2ae9ab4ac16e49a",
+        "e49d88558c10a79cf001864b",
+        "ba6d9faebcba4810c9db35e8",
+        "fac4f0437ad0c9af44c7a078"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "missing-demand",
+        "not-buying-intent",
+        "missing-buying-demand"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:b26e84faeffb973c852e5238",
+      "companyId": "rootly",
+      "promptId": "b26e84faeffb973c852e5238",
+      "text": "Which tools offer RBAC depth and private incident controls for security operations teams?",
+      "evidenceIds": [
+        "2968f2bef5b3de502b88e033",
+        "8d97c29d8ee0d88df8956dcc",
+        "929001c2c276f739834d9f50",
+        "6187562e46e7713160d7eb71",
+        "a24d08bd6e2e9d11e86eeb48",
+        "9e15976fd5249fe7b0727909",
+        "35f8207dd2abaaae53b55e4b"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:98d18d670b19f904c306aa81",
+      "companyId": "domain-posthog-com",
+      "promptId": "98d18d670b19f904c306aa81",
+      "text": "What analytics SDKs support quick setup across Next.js, React, Python, and other backend languages like Go or Rust?",
+      "evidenceIds": [
+        "995a2a44034f5b652c4b0a64",
+        "6b5a9408c421f479835836e3",
+        "8d838f5cefb2798174150c48",
+        "d469a59dd7c3b3a1dd672505",
+        "19f0d9fc4b348f0d7c0af25e",
+        "bed0efcd420b5350e0e2c3e6"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent",
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:fe051c534715eb2371617621",
+      "companyId": "greptile",
+      "promptId": "fe051c534715eb2371617621",
+      "text": "What's the best AI code review platform for enforcing internal engineering standards automatically?",
+      "evidenceIds": [
+        "6806742723f21bcc2ceea212",
+        "7522d41717554de710c954c8",
+        "358c5a8a847e1480cfbc495c",
+        "07cdd87102b9f05f1dcb9995"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "model-unsupported",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:276553e76d30a753fb9b8ab2",
+      "companyId": "reducto",
+      "promptId": "276553e76d30a753fb9b8ab2",
+      "text": "What pricing and plan options exist for document processing platforms built for high-volume enterprise ingestion?",
+      "evidenceIds": [
+        "58abf7e3d185a39c287f4631",
+        "01d16aa2f1ea10f8690c4765",
+        "fac4f0437ad0c9af44c7a078"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:c752a8cd001997580fd15ad9",
+      "companyId": "rootly",
+      "promptId": "c752a8cd001997580fd15ad9",
+      "text": "What vendors support custom and dynamic forms for permissioned incident workflows?",
+      "evidenceIds": [
+        "c8599e19c97bf18e46962213",
+        "8d97c29d8ee0d88df8956dcc",
+        "929001c2c276f739834d9f50",
+        "48bb2c7ebe7ea1871655c1a7",
+        "f2e7844e021886fbdc104b9f",
+        "25e953ceff4fc0549d89e592",
+        "c2fe4e6777fa06de89dffd09",
+        "4b27704cd2e00b4d380c7510"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:8935dd2b00da44d85802a42d",
+      "companyId": "domain-posthog-com",
+      "promptId": "8935dd2b00da44d85802a42d",
+      "text": "Which product analytics tools offer a wizard-based install process so engineers can get set up in minutes?",
+      "evidenceIds": [
+        "995a2a44034f5b652c4b0a64",
+        "19f0d9fc4b348f0d7c0af25e",
+        "615dfb5922f4ccfb9fe26aa2",
+        "4f304c530600bf6cf8463111",
+        "643fe5a5cd7e318370cb9ea9",
+        "bd44e864ca430375e3697af4",
+        "d3d39191d07b7facf11f6fc2",
+        "6bf83867a2a60bd6439cc122"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent",
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:0d86e12cff77b53492383428",
+      "companyId": "greptile",
+      "promptId": "0d86e12cff77b53492383428",
+      "text": "Our regulated engineering team needs reviews that enforce internal standards consistently—what tools support this?",
+      "evidenceIds": [
+        "7863d6211312b1a2cb2149ff",
+        "c0df61866824441b043a7c63",
+        "358c5a8a847e1480cfbc495c",
+        "872e2b732e2fb5369e1551bd"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "model-unsupported",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:345bc006d20b74d5f9cd3f85",
+      "companyId": "reducto",
+      "promptId": "345bc006d20b74d5f9cd3f85",
+      "text": "Which document AI platforms and APIs are best for parsing long financial filings into structured data?",
+      "evidenceIds": [
+        "af6fe00d008a93035a53dc7b",
+        "30b079bec9b726a5cc875ec0",
+        "2e568eaa23a973238158ba61",
+        "8df5754983b9b972747bcf86"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:94ba15047a9560bf749e5721",
+      "companyId": "rootly",
+      "promptId": "94ba15047a9560bf749e5721",
+      "text": "Which incident management platforms sync natively with Jira-based workflows for engineering teams?",
+      "evidenceIds": [
+        "781300534ac070d5d03ecc63",
+        "d0ec1ebb81f430ee5dd446df",
+        "2949167e1b9bf6d6a9af70c4",
+        "2f8d1c6d14bef606e88db3d6"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:5630bfc6368ac8a4e9aabc4c",
+      "companyId": "domain-posthog-com",
+      "promptId": "5630bfc6368ac8a4e9aabc4c",
+      "text": "What analytics platforms support MCP integration for developer tools like Cursor, VS Code, or Windsurf?",
+      "evidenceIds": [
+        "d469a59dd7c3b3a1dd672505"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:7cb338caf900a1405c1339d3",
+      "companyId": "greptile",
+      "promptId": "7cb338caf900a1405c1339d3",
+      "text": "What's the process for configuring an AI reviewer to check for internal engineering standard violations?",
+      "evidenceIds": [
+        "358c5a8a847e1480cfbc495c",
+        "07cdd87102b9f05f1dcb9995",
+        "7522d41717554de710c954c8",
+        "7e37acb661df380c936176bf",
+        "c0df61866824441b043a7c63",
+        "201d3d3cbcbd2c31b1240eb9",
+        "d50201fc46d0b2e16620a513",
+        "c368879207474d11ab94c39d"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:35ad61f1bf662c29eaec82c3",
+      "companyId": "reducto",
+      "promptId": "35ad61f1bf662c29eaec82c3",
+      "text": "What developer tools (API, SDK, CLI) exist for building financial document parsing pipelines?",
+      "evidenceIds": [
+        "051b898edb1cae4f105cbe58",
+        "8df5754983b9b972747bcf86",
+        "af6fe00d008a93035a53dc7b",
+        "2e568eaa23a973238158ba61",
+        "d8daaa950add45368930a6a2",
+        "e49d88558c10a79cf001864b",
+        "536d8a158c2c912075736abc",
+        "3e8be218d77fd670f5ce944a"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:f43113d336a9bada9a548e32",
+      "companyId": "rootly",
+      "promptId": "f43113d336a9bada9a548e32",
+      "text": "What tools offer two-way Jira integration for tracking incidents alongside engineering tickets?",
+      "evidenceIds": [
+        "4eb3f37d8837f9105615a462",
+        "d0ec1ebb81f430ee5dd446df",
+        "2f8d1c6d14bef606e88db3d6",
+        "5357dc6597099e5e2ea72ec1",
+        "4b27704cd2e00b4d380c7510",
+        "c949a1075c08db54a61d3545",
+        "0ca7fe1225b025883745d63f",
+        "938adc73370be444627b7d80"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:22a1ffecdfeb653a4ae9c758",
+      "companyId": "domain-posthog-com",
+      "promptId": "22a1ffecdfeb653a4ae9c758",
+      "text": "Which SaaS analytics vendors rely on inbound-led sales rather than aggressive outbound sales teams?",
+      "evidenceIds": [
+        "3492749762c1cbfde1d6adcf"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "single-source",
+        "model-unsupported",
+        "capability-not-entailed",
+        "model-unusable"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:4fcd4c49886f6a3d1c51ac29",
+      "companyId": "greptile",
+      "promptId": "4fcd4c49886f6a3d1c51ac29",
+      "text": "What's the best AI code review tool known for high-signal comments and a low false-positive rate?",
+      "evidenceIds": [
+        "06986d01fd551fd861d3ed3a",
+        "c6f2ddaae563ae23ade956bb",
+        "0bd56a5add53ab7844da5810",
+        "a8049bdb4be2a7d750923f8b"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:bc7e6b4a264f71b37558d313",
+      "companyId": "reducto",
+      "promptId": "bc7e6b4a264f71b37558d313",
+      "text": "Which document processing vendors support on-premises or air-gapped deployment for regulated environments?",
+      "evidenceIds": [
+        "3969f20ce578156965cd3123",
+        "c1b3e5fc5d3a106abecb022c",
+        "410710d598eae7060558d077"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:9716d410e6a59ad7494fdb4e",
+      "companyId": "rootly",
+      "promptId": "9716d410e6a59ad7494fdb4e",
+      "text": "Which vendors are best for teams that rely heavily on Jira for incident tracking?",
+      "evidenceIds": [
+        "48f16c7c5b7e92e98a837785",
+        "d0ec1ebb81f430ee5dd446df",
+        "4eb3f37d8837f9105615a462",
+        "2f8d1c6d14bef606e88db3d6",
+        "021b6a6cc020a3aaa082c8da",
+        "43107fa22e48d267cbf808cc",
+        "ae2ea87a69da50706e16adaa",
+        "25e953ceff4fc0549d89e592"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "audience-as-answer"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:f73832575a1368220d911908",
+      "companyId": "domain-posthog-com",
+      "promptId": "f73832575a1368220d911908",
+      "text": "What product analytics platforms let us self-serve sign up and evaluate without talking to sales first?",
+      "evidenceIds": [
+        "3492749762c1cbfde1d6adcf",
+        "19f0d9fc4b348f0d7c0af25e"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:b0e3e4f3fff3ede9c3221a2c",
+      "companyId": "greptile",
+      "promptId": "b0e3e4f3fff3ede9c3221a2c",
+      "text": "We're tired of noisy PR comments from our review tool—which AI reviewers actually give high-signal feedback?",
+      "evidenceIds": [
+        "0bd56a5add53ab7844da5810",
+        "06986d01fd551fd861d3ed3a",
+        "738871240d0035b5095f80bf"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:8a35832389093e2383dff192",
+      "companyId": "reducto",
+      "promptId": "8a35832389093e2383dff192",
+      "text": "What document intelligence platforms offer SOC 2 and HIPAA compliance with zero data retention options?",
+      "evidenceIds": [
+        "3969f20ce578156965cd3123",
+        "5680b820e2a23164bb568ead",
+        "6ecb7d4247c88d8a21bdd9e6",
+        "c1b3e5fc5d3a106abecb022c"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:c1ab69344999e73cc5f2edd4",
+      "companyId": "rootly",
+      "promptId": "c1ab69344999e73cc5f2edd4",
+      "text": "What platforms offer automated postmortem timelines for audit-ready incident reviews?",
+      "evidenceIds": [
+        "77738d92dd12b04d15dbff3c",
+        "ea004a8dcc5e948b23af1436",
+        "be6486c581866c38a375cc49",
+        "0e4f66e3ea61d93e0cfa50d1",
+        "8d97c29d8ee0d88df8956dcc",
+        "4963fa36d7ca2f46c8816827",
+        "25e953ceff4fc0549d89e592",
+        "091e4ce86f47e343dbfd76b4"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:9be0127124317403620b1d8f",
+      "companyId": "domain-posthog-com",
+      "promptId": "9be0127124317403620b1d8f",
+      "text": "What analytics platforms give us control over data retention and storage costs while minimizing personal data collection?",
+      "evidenceIds": [
+        "8cdbad8324280eb632ddf05e",
+        "52f5bd02ea3e33f2c630c917",
+        "615dfb5922f4ccfb9fe26aa2",
+        "ba543578b739469f101a0565",
+        "085f9877c89a38aacf2f0947",
+        "dba65814fb18d5c3b25e5782"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent",
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:261b33d4aa89af641e150516",
+      "companyId": "greptile",
+      "promptId": "261b33d4aa89af641e150516",
+      "text": "How do AI code review tools compare on reducing false positives in PR comments?",
+      "evidenceIds": [
+        "91741e0516ae53f46b426065",
+        "06986d01fd551fd861d3ed3a",
+        "0bd56a5add53ab7844da5810"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "model-unsupported",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:c07dcae7deab09a4a3ba76c8",
+      "companyId": "reducto",
+      "promptId": "c07dcae7deab09a4a3ba76c8",
+      "text": "How do enterprise teams migrate self-hosted document processing infrastructure while meeting strict deployment requirements?",
+      "evidenceIds": [
+        "410710d598eae7060558d077",
+        "384b27628f065b5fa0ad5808",
+        "14d58f2347890f6229a3b290",
+        "fac4f0437ad0c9af44c7a078",
+        "c95833c20804cb5a48df55b3",
+        "93312441e5fb470921db7342",
+        "251e63adf347f6976027d919",
+        "4e5336fcdfb00add2babd20b"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent",
+        "unsupported-named-constraint"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:c2cd86258d0d2a64e9a1ff31",
+      "companyId": "rootly",
+      "promptId": "c2cd86258d0d2a64e9a1ff31",
+      "text": "Which tools use AI to identify probable root cause and draft remediation steps for lean SRE teams?",
+      "evidenceIds": [
+        "ea004a8dcc5e948b23af1436",
+        "b0d925653d8f48e6ec2a1815",
+        "48bb2c7ebe7ea1871655c1a7",
+        "b70f0a2515ebc216957e8fc2"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:83d03d0f4cf9c606b6294184",
+      "companyId": "domain-posthog-com",
+      "promptId": "83d03d0f4cf9c606b6294184",
+      "text": "Which product analytics tools help us balance retention analysis needs against storage costs at scale?",
+      "evidenceIds": [
+        "448626e7523e1b7b4993898d"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "single-source",
+        "model-unsupported",
+        "capability-not-entailed",
+        "model-unusable"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:a5891d996fe97023fe92f329",
+      "companyId": "greptile",
+      "promptId": "a5891d996fe97023fe92f329",
+      "text": "How do leading AI code review platforms compare when it comes to explaining unfamiliar legacy code during evaluation?",
+      "evidenceIds": [
+        "dd9d38267281fab435ff66e9",
+        "de899a6dd9d317ed6381542d",
+        "5a304444fd2db7255b5f8cd9",
+        "d5a78a1fa32a0d05cadf8846",
+        "5201bc1e3ef563813d1185a8"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "model-unsupported",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:5e6fb23b6c978e6dcc82cbbc",
+      "companyId": "reducto",
+      "promptId": "5e6fb23b6c978e6dcc82cbbc",
+      "text": "Which document processing vendors let us run entirely within our own infrastructure for data residency compliance?",
+      "evidenceIds": [
+        "2c112e4b0f21a1fb8166c225",
+        "ef6af40679e8a7d8878ec0a0"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:57980c9c06cb843f8edacff8",
+      "companyId": "rootly",
+      "promptId": "57980c9c06cb843f8edacff8",
+      "text": "What vendors correlate alerts with deploys and configs to speed up root cause analysis?",
+      "evidenceIds": [
+        "48bb2c7ebe7ea1871655c1a7",
+        "ea004a8dcc5e948b23af1436",
+        "5dddaa8cb3f4ec540fa69e68",
+        "3f1480ed8d9467f49dd43468",
+        "9bd8ec7304704677e3cfb208",
+        "53a5ca1ce01c882668589a02",
+        "a86fac8562719fd661372509",
+        "ceb244893a8f0938ebe3a106"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:01ad6872021f947de28bc1fd",
+      "companyId": "domain-posthog-com",
+      "promptId": "01ad6872021f947de28bc1fd",
+      "text": "What all-in-one platforms combine product analytics, session replay, feature flags, and error tracking in a single tool?",
+      "evidenceIds": [
+        "d3d39191d07b7facf11f6fc2",
+        "ba543578b739469f101a0565",
+        "5b8ae05866f66cb470986d02",
+        "615dfb5922f4ccfb9fe26aa2",
+        "085f9877c89a38aacf2f0947",
+        "1f605cf5e7cc428d2720698a"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent",
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:8f82cad262e07cf0ee599f63",
+      "companyId": "greptile",
+      "promptId": "8f82cad262e07cf0ee599f63",
+      "text": "What's the best AI code review tool for platform teams comparing options to handle legacy systems?",
+      "evidenceIds": [
+        "18b223cd427990dfb534916b",
+        "c7ff7dde8dfa1d51aed94113",
+        "ae6b168812da06c06d864a81"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "model-unsupported",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:5d038a7aa338fd314789bc3c",
+      "companyId": "reducto",
+      "promptId": "5d038a7aa338fd314789bc3c",
+      "text": "What document platforms offer zero data retention policies for regulated, sensitive document processing?",
+      "evidenceIds": [
+        "40eb9dc48f4ece7f5f826f03",
+        "e00fb21b8634d62648efe76b",
+        "28bb0c59dcb6a5c8886e0395",
+        "2c112e4b0f21a1fb8166c225",
+        "36f6453d72d19a2353b4f1f5",
+        "d99dbfc1dbd029f61b913817",
+        "737d2349ef17be8a2d4e289d",
+        "fac4f0437ad0c9af44c7a078"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:6181dbbed6839a26fad7a603",
+      "companyId": "rootly",
+      "promptId": "6181dbbed6839a26fad7a603",
+      "text": "Which platforms support permissioned incident workflows directly inside Slack for sensitive incidents?",
+      "evidenceIds": [
+        "c2fe4e6777fa06de89dffd09",
+        "f209b74db9284856ab7dcae0",
+        "929001c2c276f739834d9f50",
+        "6187562e46e7713160d7eb71",
+        "26f5352f53de31a396a2a706",
+        "b70ac82f0eb1bea43b5c50c1"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:c63483001d66098425591e6d",
+      "companyId": "domain-posthog-com",
+      "promptId": "c63483001d66098425591e6d",
+      "text": "How do teams avoid stitching together separate vendors for analytics, replay, and experiments by using a single suite?",
+      "evidenceIds": [
+        "085f9877c89a38aacf2f0947",
+        "ba543578b739469f101a0565",
+        "615dfb5922f4ccfb9fe26aa2",
+        "5b8ae05866f66cb470986d02",
+        "d3d39191d07b7facf11f6fc2",
+        "413d261838024df606f11a7c"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent",
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:ee2dbd797af39ca2b32f6289",
+      "companyId": "greptile",
+      "promptId": "ee2dbd797af39ca2b32f6289",
+      "text": "What's the best AI code review tool for teams with mixed-language, polyglot repositories?",
+      "evidenceIds": [
+        "ceb4128cf6ae816e07eafb70",
+        "8e4c4fe80aa3adaeb3a92c04",
+        "15cc03e77f2bd4af5f3d51e3",
+        "738871240d0035b5095f80bf"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "model-unsupported",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:0a94d5f5e6bc335b826cd403",
+      "companyId": "reducto",
+      "promptId": "0a94d5f5e6bc335b826cd403",
+      "text": "How do I find a document extraction vendor with confirmed data residency and privacy controls for compliance needs?",
+      "evidenceIds": [
+        "2c112e4b0f21a1fb8166c225",
+        "b7c036f3c460a5215c348867",
+        "aff50e61629ccbb40f9d5cd4",
+        "6ecb7d4247c88d8a21bdd9e6",
+        "d99dbfc1dbd029f61b913817",
+        "6a76625f75be0d33db392b92",
+        "d32c03b23f2331e58a5989d1",
+        "2e8be235b72dbec76db054c3"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:a39a3ee8771f31974b68366e",
+      "companyId": "rootly",
+      "promptId": "a39a3ee8771f31974b68366e",
+      "text": "What tools let SRE teams run parallel Slack channels to separate technical and business incident discussions?",
+      "evidenceIds": [
+        "9e15976fd5249fe7b0727909",
+        "f209b74db9284856ab7dcae0",
+        "83251eb66e6a56f1eb4948bc",
+        "26f5352f53de31a396a2a706",
+        "f2e7844e021886fbdc104b9f",
+        "0e4f66e3ea61d93e0cfa50d1",
+        "b70ac82f0eb1bea43b5c50c1",
+        "1cbfb51a264e9f0e9bbde2e3"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:3a9cdf03e625bceca2f56629",
+      "companyId": "domain-posthog-com",
+      "promptId": "3a9cdf03e625bceca2f56629",
+      "text": "Which platforms let us jump from a funnel graph directly into session recordings and feature flag states for the same user?",
+      "evidenceIds": [
+        "413d261838024df606f11a7c"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:9f4e7edc6fac4aa6ef23a60d",
+      "companyId": "greptile",
+      "promptId": "9f4e7edc6fac4aa6ef23a60d",
+      "text": "Our codebase spans multiple languages—which AI code review tools handle multi-language analysis well?",
+      "evidenceIds": [
+        "15cc03e77f2bd4af5f3d51e3",
+        "8e4c4fe80aa3adaeb3a92c04",
+        "cd2be8af35598e43d4a9c6c8"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "model-unsupported",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:ef8535641dbc49ebe7315934",
+      "companyId": "reducto",
+      "promptId": "ef8535641dbc49ebe7315934",
+      "text": "What's the best form-aware extraction tool for processing complex operational forms without manual templates?",
+      "evidenceIds": [
+        "b3a51a766009928f29edf8da",
+        "a2f88c0dcd093ba7419c4966",
+        "ad48787beeb0e2c61f696594",
+        "9c7d762fe943c2962e1450fd"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:abb9594340bcd7cedc3cd644",
+      "companyId": "rootly",
+      "promptId": "abb9594340bcd7cedc3cd644",
+      "text": "Which vendors offer native Slack or Teams incident response with AI chat assistance?",
+      "evidenceIds": [
+        "a86fac8562719fd661372509",
+        "f209b74db9284856ab7dcae0",
+        "f2e7844e021886fbdc104b9f",
+        "26f5352f53de31a396a2a706",
+        "c2fe4e6777fa06de89dffd09",
+        "83251eb66e6a56f1eb4948bc"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:1a86e6df52333e9884d36cba",
+      "companyId": "domain-posthog-com",
+      "promptId": "1a86e6df52333e9884d36cba",
+      "text": "What data platforms support realtime event transformations like GeoIP enrichment and property standardization before storage?",
+      "evidenceIds": [
+        "ee372beeada960ac65347e8c",
+        "52f5bd02ea3e33f2c630c917",
+        "19f0d9fc4b348f0d7c0af25e",
+        "615dfb5922f4ccfb9fe26aa2",
+        "bed0efcd420b5350e0e2c3e6",
+        "9f8449399b0efd702f8b182f",
+        "995a2a44034f5b652c4b0a64"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent",
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:4942773269d0d19b5924caf9",
+      "companyId": "greptile",
+      "promptId": "4942773269d0d19b5924caf9",
+      "text": "How do AI code review platforms compare in their support for multiple programming languages?",
+      "evidenceIds": [
+        "e1739b25568589d55b152faa",
+        "8e4c4fe80aa3adaeb3a92c04",
+        "3d044a90038fd71e95c0e0a0"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "model-unsupported",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:681da403abf7f16185ae091c",
+      "companyId": "reducto",
+      "promptId": "681da403abf7f16185ae091c",
+      "text": "Which document platforms can extract structured data from compliance forms and safety certifications automatically?",
+      "evidenceIds": [
+        "904241ac03872b619a6ae89f",
+        "587937e245d27b0c19e02ee1",
+        "96be0cd466c3c80bcf7ca09b",
+        "ad48787beeb0e2c61f696594"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:4b8890faabcc13be6410a6f3",
+      "companyId": "rootly",
+      "promptId": "4b8890faabcc13be6410a6f3",
+      "text": "What incident management platforms support multi-team coordination for large organizations with many services?",
+      "evidenceIds": [
+        "5dddaa8cb3f4ec540fa69e68",
+        "2f8dcf07b8476e0d41446a96",
+        "99778b55795bd3d2d09327ca",
+        "f2e7844e021886fbdc104b9f",
+        "2a12e33c31677151f6c517f8",
+        "938adc73370be444627b7d80",
+        "25e953ceff4fc0549d89e592",
+        "84652495755a76dfc411236d"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:bec7f99b91e99a4db2e9be2b",
+      "companyId": "domain-posthog-com",
+      "promptId": "bec7f99b91e99a4db2e9be2b",
+      "text": "Which tools let us stream events to external systems in real time as they're ingested?",
+      "evidenceIds": [
+        "ee372beeada960ac65347e8c"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "single-source",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:d88d4b458a46a71db759a574",
+      "companyId": "greptile",
+      "promptId": "d88d4b458a46a71db759a574",
+      "text": "What's the best AI code review tool for maintaining full repository context in large monorepos?",
+      "evidenceIds": [
+        "f3abef7ae18b3722e4b7052b",
+        "738871240d0035b5095f80bf",
+        "f8128222ff259620bc4548f1",
+        "ff9ca37b5eda16120eb86415"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:089faceaee3d8bbd530e9eff",
+      "companyId": "reducto",
+      "promptId": "089faceaee3d8bbd530e9eff",
+      "text": "What tools handle complex financial spreadsheets with clustered tables and multiple linked tabs for extraction?",
+      "evidenceIds": [
+        "9a4310296a30ed3363d3b0c2",
+        "dcd87a59cd4b3c9e1bf5e489",
+        "ef0b739ea1413ea9ea4b8e82",
+        "7aee9849512b9328b6396716",
+        "9494fd07d6570a065c587844",
+        "e49d88558c10a79cf001864b",
+        "248f9b404db1c80108a7cb3f",
+        "82afd7403099d0c9efb1389b"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:93bed10cb79ced78dc918ceb",
+      "companyId": "rootly",
+      "promptId": "93bed10cb79ced78dc918ceb",
+      "text": "Which tools allow multiple audiences to be managed within a single incident response workflow?",
+      "evidenceIds": [
+        "99695221888650196f88fc87",
+        "2f8dcf07b8476e0d41446a96",
+        "091e4ce86f47e343dbfd76b4",
+        "8612597837cd1fa601aa573b"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "model-unsupported",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:ad3a47d2057de6d4dae12c62",
+      "companyId": "domain-posthog-com",
+      "promptId": "ad3a47d2057de6d4dae12c62",
+      "text": "What analytics tools provide funnel and retention analysis alongside SQL access for deeper conversion investigation?",
+      "evidenceIds": [
+        "d469a59dd7c3b3a1dd672505",
+        "19f0d9fc4b348f0d7c0af25e",
+        "52f5bd02ea3e33f2c630c917",
+        "8cdbad8324280eb632ddf05e",
+        "085f9877c89a38aacf2f0947",
+        "615dfb5922f4ccfb9fe26aa2",
+        "643fe5a5cd7e318370cb9ea9"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent",
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:925346cba9c5f0691e396c67",
+      "companyId": "greptile",
+      "promptId": "925346cba9c5f0691e396c67",
+      "text": "Our monorepo is huge—which AI code review platforms actually keep repository-wide context during reviews?",
+      "evidenceIds": [
+        "3e78b4619667831ec24ad80c",
+        "738871240d0035b5095f80bf",
+        "519b4ff78b7ed8458b845a9e",
+        "f8128222ff259620bc4548f1"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:e99a2515e1e7d0ed1172c8d8",
+      "companyId": "reducto",
+      "promptId": "e99a2515e1e7d0ed1172c8d8",
+      "text": "Which document automation tools work well for wealth management firms processing long, handwritten client documents?",
+      "evidenceIds": [
+        "ab0928c11623122c99e964cb",
+        "9c61891fa86ffd3dd61ea626"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "model-unsupported",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:b39ef1442c6fe58d18cd13f4",
+      "companyId": "rootly",
+      "promptId": "b39ef1442c6fe58d18cd13f4",
+      "text": "What vendors are best suited for large organizations coordinating incidents across many teams?",
+      "evidenceIds": [
+        "687fda33124dad0457641b65",
+        "99778b55795bd3d2d09327ca",
+        "52c917d690577ce075f6f1cb",
+        "5dddaa8cb3f4ec540fa69e68"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "domain-posthog-com:c0b541fed87804469521140f",
+      "companyId": "domain-posthog-com",
+      "promptId": "c0b541fed87804469521140f",
+      "text": "Which platforms let us find drop-off points in a conversion funnel and jump directly into related session recordings?",
+      "evidenceIds": [
+        "413d261838024df606f11a7c",
+        "d469a59dd7c3b3a1dd672505"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [
+        "single-source"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:e0439e322e3d44295d5c85d2",
+      "companyId": "greptile",
+      "promptId": "e0439e322e3d44295d5c85d2",
+      "text": "How do AI code review vendors compare on handling context for very large codebases?",
+      "evidenceIds": [
+        "c7ff7dde8dfa1d51aed94113",
+        "738871240d0035b5095f80bf",
+        "e284b9fb11ee5ee17de52bb8"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "model-unsupported",
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:e105fa6fcdd694ad84047e23",
+      "companyId": "reducto",
+      "promptId": "e105fa6fcdd694ad84047e23",
+      "text": "What's the best solution for enterprise data teams needing high-volume document ingestion at production scale?",
+      "evidenceIds": [
+        "f2921f12c9cda8534fd91b44",
+        "b40f4b6f1be782aad8fc8c9e",
+        "48c51e7cd585c83a1e0bf437",
+        "ce7d8363f989ba4acac3f1af",
+        "fac4f0437ad0c9af44c7a078"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:cf6b3114730b03e7f48ea982",
+      "companyId": "rootly",
+      "promptId": "cf6b3114730b03e7f48ea982",
+      "text": "Which platforms enable controlled collaboration for security incidents across teams?",
+      "evidenceIds": [
+        "a86fac8562719fd661372509",
+        "8457d604cf576c14ed634d98",
+        "31fbeb02543d77bb19363042",
+        "e5183ff040b73595abfc984a",
+        "a920f7e81ff582f56b77e707",
+        "c780ad5e90fa035beeb70da8"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:6ba441bb8e766bb1a81d6d7f",
+      "companyId": "greptile",
+      "promptId": "6ba441bb8e766bb1a81d6d7f",
+      "text": "What's the best automated PR review tool that gives genuinely useful, not generic, feedback?",
+      "evidenceIds": [
+        "43954f4f62cea8b7bce9b8c0",
+        "738871240d0035b5095f80bf",
+        "0f66b384f50a6282e0d69e68",
+        "65d503c39b7f11ae7143a7b4"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "reducto:56cc5f428a288cb03e43935e",
+      "companyId": "reducto",
+      "promptId": "56cc5f428a288cb03e43935e",
+      "text": "Which document processing platforms are proven reliable for large-scale production AI workflows?",
+      "evidenceIds": [
+        "f2921f12c9cda8534fd91b44",
+        "ce7d8363f989ba4acac3f1af",
+        "ccff227304617f509b7ccebc",
+        "18bbc979d5a87344f94ae1d1"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:ce8ffb3f81719e807aecb77b",
+      "companyId": "rootly",
+      "promptId": "ce8ffb3f81719e807aecb77b",
+      "text": "What tools provide enterprise-grade security and compliance for incident collaboration?",
+      "evidenceIds": [
+        "a2f16326d04e49a3bdcf6906",
+        "a86fac8562719fd661372509",
+        "31fbeb02543d77bb19363042",
+        "e5183ff040b73595abfc984a",
+        "53a5ca1ce01c882668589a02",
+        "0e4f66e3ea61d93e0cfa50d1",
+        "ea004a8dcc5e948b23af1436",
+        "90c459759ad0d2facd89c4e9"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:88c4fd58d7f978e69a2647e2",
+      "companyId": "greptile",
+      "promptId": "88c4fd58d7f978e69a2647e2",
+      "text": "We want fast feedback on PRs that's actually useful, not just noise—which tools deliver on both?",
+      "evidenceIds": [
+        "0f66b384f50a6282e0d69e68",
+        "738871240d0035b5095f80bf",
+        "bf41231dd8e181953dfd532a",
+        "43954f4f62cea8b7bce9b8c0",
+        "360fa00eb60b7342e7f858f6"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:95527a141d2480ed302c8ee2",
+      "companyId": "rootly",
+      "promptId": "95527a141d2480ed302c8ee2",
+      "text": "Which vendors let security operations teams restrict incident visibility while still collaborating?",
+      "evidenceIds": [
+        "31fbeb02543d77bb19363042",
+        "a86fac8562719fd661372509",
+        "e48aceab900890b868660faa",
+        "6187562e46e7713160d7eb71",
+        "0db53f517c32d208149c3c65"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:10d6e3edffe977a54bfa12d3",
+      "companyId": "greptile",
+      "promptId": "10d6e3edffe977a54bfa12d3",
+      "text": "How do AI PR review tools compare on the actual quality and usefulness of their feedback?",
+      "evidenceIds": [
+        "65d503c39b7f11ae7143a7b4",
+        "738871240d0035b5095f80bf",
+        "43954f4f62cea8b7bce9b8c0",
+        "bf41231dd8e181953dfd532a",
+        "0bd56a5add53ab7844da5810"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:80fdb7c78d076dd0dcd223b5",
+      "companyId": "rootly",
+      "promptId": "80fdb7c78d076dd0dcd223b5",
+      "text": "What are the best alternatives for migrating off PagerDuty without disrupting incident response?",
+      "evidenceIds": [
+        "856d27be9599df3e9d32ae67",
+        "c0ba47860874f8c7b82ebec5",
+        "938adc73370be444627b7d80",
+        "2c7a3cd84ba7c9c1f341a263",
+        "fbddf25a417dcffd735ac622",
+        "4966b26975292edc0c6f659e"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "capability-not-entailed"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:b21fc8057e6c868a8e09fdbc",
+      "companyId": "greptile",
+      "promptId": "b21fc8057e6c868a8e09fdbc",
+      "text": "What's the best AI code review tool for maintaining repository-wide context in large monorepos?",
+      "evidenceIds": [
+        "f3abef7ae18b3722e4b7052b",
+        "e284b9fb11ee5ee17de52bb8",
+        "f8128222ff259620bc4548f1",
+        "ff9ca37b5eda16120eb86415",
+        "3e78b4619667831ec24ad80c",
+        "253ba9a0d77be15d246c0526"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:43e7739047533dc26ef7f92f",
+      "companyId": "rootly",
+      "promptId": "43e7739047533dc26ef7f92f",
+      "text": "Which incident management platforms make it easy to switch from PagerDuty quickly?",
+      "evidenceIds": [
+        "938adc73370be444627b7d80",
+        "c0ba47860874f8c7b82ebec5",
+        "8b6e29e7017e3fcf27e789b9",
+        "5357dc6597099e5e2ea72ec1"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:4b7cc4890df634f7696e9a00",
+      "companyId": "greptile",
+      "promptId": "4b7cc4890df634f7696e9a00",
+      "text": "Our platform team needs AI review that understands the whole large repo, not just the diff—what works?",
+      "evidenceIds": [
+        "f8128222ff259620bc4548f1",
+        "e284b9fb11ee5ee17de52bb8",
+        "c7ff7dde8dfa1d51aed94113",
+        "7e37acb661df380c936176bf",
+        "fc6467d9d8690e801872b76a",
+        "b2d8e20c4d1e1f0c41937426"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:a37c19446fefa0ca3e82f932",
+      "companyId": "rootly",
+      "promptId": "a37c19446fefa0ca3e82f932",
+      "text": "What tools are recommended for PagerDuty users looking to replace years of legacy on-call setup?",
+      "evidenceIds": [
+        "2c7a3cd84ba7c9c1f341a263",
+        "c0ba47860874f8c7b82ebec5",
+        "4966b26975292edc0c6f659e",
+        "53a5ca1ce01c882668589a02",
+        "9bd8ec7304704677e3cfb208",
+        "856d27be9599df3e9d32ae67",
+        "b70f0a2515ebc216957e8fc2",
+        "d67be714f40dc46b35ba46e5"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:96ee92f4cb1f22a5cc74b8ab",
+      "companyId": "greptile",
+      "promptId": "96ee92f4cb1f22a5cc74b8ab",
+      "text": "How do code review AI tools compare on context retention across large, complex repositories?",
+      "evidenceIds": [
+        "253ba9a0d77be15d246c0526",
+        "e284b9fb11ee5ee17de52bb8",
+        "430d67fcd18858f5d7ef38a0",
+        "201d3d3cbcbd2c31b1240eb9"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:9312dcdd40c4efa5efc76ec7",
+      "companyId": "rootly",
+      "promptId": "9312dcdd40c4efa5efc76ec7",
+      "text": "Which platforms automate repetitive incident coordination tasks for lean SRE teams?",
+      "evidenceIds": [
+        "48bb2c7ebe7ea1871655c1a7",
+        "d20a1e9ff69c7b2326a533ea",
+        "f2e7844e021886fbdc104b9f",
+        "b0d925653d8f48e6ec2a1815",
+        "25e953ceff4fc0549d89e592"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "greptile:15206dd2118c724a51361323",
+      "companyId": "greptile",
+      "promptId": "15206dd2118c724a51361323",
+      "text": "We're evaluating vendors because our AI reviews keep losing context in very large repositories—what should we look at?",
+      "evidenceIds": [
+        "c7ff7dde8dfa1d51aed94113",
+        "7e37acb661df380c936176bf",
+        "c78ed1985e78ff4fb0f75d1e",
+        "e284b9fb11ee5ee17de52bb8"
+      ],
+      "automatedDecision": "accepted",
+      "automatedFindings": [],
+      "status": "pending",
+      "grades": []
+    },
+    {
+      "id": "rootly:f50cd2bfa0d5c06f429c259c",
+      "companyId": "rootly",
+      "promptId": "f50cd2bfa0d5c06f429c259c",
+      "text": "What tools offer AI-driven incident workflow automation to reduce manual response work?",
+      "evidenceIds": [
+        "ab3f8bc14c811ffedeee2ead",
+        "016956b3def76cf89c453506",
+        "25e953ceff4fc0549d89e592",
+        "a517549b11a34a45582d080f",
+        "f2e7844e021886fbdc104b9f",
+        "021b6a6cc020a3aaa082c8da",
+        "48bb2c7ebe7ea1871655c1a7",
+        "beea6adcb855db9f53614b4f"
+      ],
+      "automatedDecision": "rejected",
+      "automatedFindings": [
+        "not-buying-intent"
+      ],
+      "status": "pending",
+      "grades": []
+    }
+  ]
+}

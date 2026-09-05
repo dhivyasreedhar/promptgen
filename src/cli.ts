@@ -2,6 +2,7 @@
 import { companyById, loadConfig } from "./config.js";
 import { evaluateRetrieval } from "./eval.js";
 import { evaluateIndependentBenchmark } from "./eval-benchmark.js";
+import { evaluateHumanAnnotations, prepareHumanEvaluation } from "./eval-human.js";
 import { runCompany } from "./pipeline/run.js";
 import { scheduler } from "./scheduler.js";
 import { serve } from "./server.js";
@@ -38,8 +39,21 @@ switch (command) {
     await scheduler(config, fixtures);
     break;
   case "eval":
-    process.stdout.write(`${JSON.stringify({ fixtureCoverage: await evaluateRetrieval(config), independentBenchmark: await evaluateIndependentBenchmark(config) }, null, 2)}\n`);
+    process.stdout.write(`${JSON.stringify({ fixtureCoverage: await evaluateRetrieval(config), safetyRegression: await evaluateIndependentBenchmark(config),
+      humanEvaluation: await evaluateHumanAnnotations(config.rootDir) }, null, 2)}\n`);
     break;
+  case "eval-prepare":
+    process.stdout.write(`${JSON.stringify(await prepareHumanEvaluation(config), null, 2)}\n`);
+    break;
+  case "eval-human":
+    process.stdout.write(`${JSON.stringify(await evaluateHumanAnnotations(config.rootDir), null, 2)}\n`);
+    break;
+  case "eval-gate": {
+    const report = await evaluateHumanAnnotations(config.rootDir);
+    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+    process.exitCode = report.passed ? 0 : 1;
+    break;
+  }
   case "serve":
     await serve(config, fixtures);
     break;
@@ -91,6 +105,6 @@ switch (command) {
     break;
   }
   default:
-    process.stdout.write(["Manicule Promptgen V2", "", "Commands:", "  run <company> [--fixtures]", "  run-all [--fixtures]", "  scheduler [--fixtures]", "  serve [--fixtures]", "  eval (fixture coverage + independent adversarial benchmark)", "  postgres-migrate", "  postgres-health", "  postgres-search <company-id> <query>", "  postgres-embed <company-id> [limit]", ""].join("\n"));
+    process.stdout.write(["Manicule Promptgen V2", "", "Commands:", "  run <company> [--fixtures]", "  run-all [--fixtures]", "  scheduler [--fixtures]", "  serve [--fixtures]", "  eval (safety regression + human quality report)", "  eval-prepare", "  eval-human", "  eval-gate", "  postgres-migrate", "  postgres-health", "  postgres-search <company-id> <query>", "  postgres-embed <company-id> [limit]", ""].join("\n"));
     if (command !== "help") process.exitCode = 1;
 }

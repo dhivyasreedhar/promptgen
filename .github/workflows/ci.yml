@@ -14,5 +14,6 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm test
+      - run: npm run eval:human
       - run: npm run build
       - run: npm audit --audit-level=high

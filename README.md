@@ -60,6 +60,11 @@ Set `PROMPTGEN_MODEL_PROVIDER` to `auto`, `anthropic`, `openai`, or `local`. The
 npx tsx src/cli.ts run greptile --fixtures
 npx tsx src/cli.ts run-all --fixtures
 npx tsx src/cli.ts eval
+npm run eval:prepare
+npm run eval:human
+npm run eval:annotate -- retrieval reviewer-a --limit=25
+npm run eval:annotate -- prompts reviewer-a --limit=25
+npm run eval:gate
 npx tsx src/cli.ts scheduler --fixtures
 npm run serve
 ```
@@ -93,7 +98,9 @@ Private fixture connectors:
 
 By default, the fixture generator creates 20,300 artifacts per company—81,200 total—with source-specific formats, a year of timestamps, repeated evidence, lifecycle ambiguity, and approximately 65% operational noise. Set `PROMPTGEN_FIXTURE_SCALE=1` for a 4,060-record-per-company development corpus. The generated topic coverage check under `fixtures/gold/` is intentionally reported as fixture consistency, not independent retrieval quality.
 
-`npm run eval` additionally runs the hand-authored benchmark in `fixtures/benchmark/retrieval.json`. It measures recall@12, precision@12, and forbidden-hit rate across roadmap-versus-shipped evidence, expired claims, ACL-restricted records, never-expose records, irrelevant noise, and vocabulary expansion. This benchmark is kept independent from the large fixture generator so it cannot pass merely by reproducing fixture labels.
+`npm run eval` reports three deliberately separate layers. Fixture coverage checks generator consistency. The five-case hand-authored corpus in `fixtures/benchmark/retrieval.json` is an adversarial safety regression for roadmap-versus-shipped evidence, expired claims, ACL restrictions, `never-expose`, noise, and vocabulary expansion. It is not presented as evidence of production retrieval quality. The human-evaluation report reads a 150-case retrieval queue and a 200-prompt grading queue under `eval/annotations`; it remains failed until actual reviewers meet the documented coverage and quality thresholds.
+
+Run `npm run eval:prepare` after representative company runs to refresh the queues while preserving existing judgments by stable case ID. Reviewers use `npm run eval:annotate -- retrieval <reviewer-id>` and `npm run eval:annotate -- prompts <reviewer-id>`. `npm run eval:human` reports progress; `npm run eval:gate` is the non-zero release gate. The full labeling, overlap, and adjudication rules are in `eval/PROTOCOL.md`. Generated, fixture-derived, or model judgments are never counted as human labels.
 
 Real private connectors implement the same `Connector` interface and must emit `SourceArtifact` values with genuine `private` visibility. Fixture provenance is validated and cannot be mistaken for connected customer data.
 
@@ -142,7 +149,7 @@ Boundary prompts are always returned separately.
 
 ## Quality, lifecycle, and operations
 
-`npm run eval` reports retrieval recall at 3 and 12, mean reciprocal rank, precision, forbidden-hit rate, ACL/secret leakage, and stale-truth leakage against the independent adversarial corpus. The corpus covers noisy records, private scopes, secrets, planned capabilities, deprecated claims, and expired truth. Context packs additionally reconcile near-duplicate capability evidence and contradictory current claims. A clear authority/freshness winner is retained with a trace decision; comparable contradictions are withheld rather than guessed.
+The safety regression reports recall at 3 and 12, reciprocal rank, precision, forbidden-hit rate, ACL/secret leakage, and stale-truth leakage over its five deterministic cases. Production-quality claims come only from the separate human evaluation: pooled retrieval judgments measure recall@3, recall@12, precision@12, forbidden hits, and reviewer agreement; prompt grades measure acceptance, buyer intent, recommendation likelihood, evidence entailment, distinctness, naturalness, and reviewer agreement. Context packs additionally reconcile near-duplicate capability evidence and contradictory current claims. A clear authority/freshness winner is retained with a trace decision; comparable contradictions are withheld rather than guessed.
 
 Prompt continuity is keyed by the critic's semantic opportunity rather than exact wording. Human rejections suppress equivalent rewrites, approvals and brand-losing prompts receive a bounded preference, and every completed run records added, retained, and removed lifecycle events plus churn rate. The UI shows retention and churn alongside the prompt set.
 
