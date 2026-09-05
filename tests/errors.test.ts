@@ -9,6 +9,7 @@ describe("failure classification", () => {
   it("does not retry authentication, configuration, or cancellation failures", () => {
     expect(classifyFailure(new Error("401 invalid API key")).retryable).toBe(false);
     expect(classifyFailure(new Error("DATABASE_URL is not configured")).retryable).toBe(false);
+    expect(classifyFailure(new Error('404 {"type":"not_found_error","message":"model: retired-model"}')).class).toBe("configuration");
     expect(classifyFailure(new Error("Job cancellation requested")).retryable).toBe(false);
     expect(classifyFailure(new Error("violates foreign key constraint")).retryable).toBe(false);
   });

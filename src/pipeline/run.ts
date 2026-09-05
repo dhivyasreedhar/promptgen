@@ -146,6 +146,7 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
     const retrieve = (needs: ReturnType<typeof planEvidenceNeeds>) => hostedRetriever ? hostedRetriever.retrieve(company.id, needs) : Promise.resolve(localRetriever.retrieve(company.id, needs));
     const broadPacks = await retrieve(planEvidenceNeeds(company, []));
     const broadEvidence = uniqueEvidence(broadPacks.flatMap(pack => pack.records.map(item => item.evidence)));
+    metrics.evidenceRetrieved = broadEvidence.length;
     tracePrivacy(trace, broadEvidence, "topic-planning");
     const modelTopics = await cachedModelCall(db, trace, model.name, "plan-topics", { company, broadEvidence }, () => model.planTopics(company, broadEvidence, controller.signal));
     const topics = dedupeTopics([...modelTopics, ...tags.map(slug => ({ slug, query: slug.replaceAll("-", " ") }))]);
@@ -153,7 +154,10 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
     const needs = planEvidenceNeeds(company, topics);
     trace.record("retrieve", "plan-created", { needs });
     const packs = await retrieve(needs);
-    metrics.evidenceRetrieved = new Set(packs.flatMap(pack => pack.records.map(item => item.evidence.id))).size;
+    metrics.evidenceRetrieved = new Set([
+      ...broadEvidence.map(item => item.id),
+      ...packs.flatMap(pack => pack.records.map(item => item.evidence.id)),
+    ]).size;
     for (const pack of packs) trace.record("retrieve", pack.missing ? "need-missing" : "need-satisfied", {
       query: pack.need.query,
       records: pack.records.map(record => ({ id: record.evidence.id, source: record.evidence.source, kind: record.evidence.kind, score: record.score, reasons: record.reasons })),

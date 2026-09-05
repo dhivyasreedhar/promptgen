@@ -39,7 +39,7 @@ const envSchema = z.object({
   PROMPTGEN_EMBEDDING_RUN_LIMIT: z.coerce.number().int().min(0).max(5_000).default(500),
   PROMPTGEN_OLLAMA_URL: z.string().url().default("http://127.0.0.1:11434"),
   ANTHROPIC_API_KEY: z.string().optional(),
-  ANTHROPIC_MODEL: z.string().default("claude-sonnet-4-20250514"),
+  ANTHROPIC_MODEL: z.string().default("claude-sonnet-4-6"),
   GITHUB_TOKEN: z.string().optional(),
   DATABASE_URL: z.string().optional(),
   PGHOST: z.string().optional(),
