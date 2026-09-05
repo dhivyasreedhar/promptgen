@@ -21,14 +21,16 @@ const generatedSchema = z.object({
     archetype: z.enum(["category", "comparison", "constraint", "workflow"]),
     evidenceIds: z.array(z.string()).min(1),
     coverage: coverageSchema,
-  })).min(10).max(80),
+  // Accept partial provider output; pipeline validation/backfill can recover
+  // without turning an under-produced response into a failed run.
+  })).min(1).max(80),
 });
 type Generated = z.infer<typeof generatedSchema>;
 
 const jsonSchema: Tool.InputSchema = {
   type: "object", additionalProperties: false, required: ["prompts"],
   properties: {
-    prompts: { type: "array", minItems: 10, maxItems: 80, items: {
+    prompts: { type: "array", minItems: 1, maxItems: 80, items: {
       type: "object", additionalProperties: false, required: ["opportunityId", "text", "archetype", "evidenceIds", "coverage"],
       properties: {
         opportunityId: { type: "string" }, text: { type: "string", minLength: 12, maxLength: 240 },
