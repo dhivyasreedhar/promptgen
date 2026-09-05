@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { discoverOpportunities } from "../src/opportunities/discover.js";
 import { validateCandidates } from "../src/prompts/validate.js";
-import { rankPublicUrls } from "../src/connectors/web.js";
+import { PublicWebConnector, rankPublicUrls } from "../src/connectors/web.js";
 import type { CompanyConfig, EvidencePack, EvidenceRecord, PromptCandidate } from "../src/types.js";
 
 const company: CompanyConfig = { id: "public-co", name: "Public Co", domain: "public.co", category: "product analytics", githubOrganizations: [], enabledSources: ["web"] };
@@ -14,6 +14,8 @@ const publicCapability = (overrides: Partial<EvidenceRecord> = {}): EvidenceReco
 });
 
 describe("public-only prompt path", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
   it("creates a conservative inferred opportunity from current public capability evidence", () => {
     const evidence = publicCapability();
     const packs: EvidencePack[] = [{
@@ -68,5 +70,37 @@ describe("public-only prompt path", () => {
       "https://example.com/pricing",
       "https://example.com/product/analytics",
     ]);
+  });
+
+  it("keeps successful pages when another page body fails", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL) => {
+      const url = String(input);
+      if (url.endsWith("/sitemap.xml") || url.endsWith("/sitemap_index.xml")) {
+        return new Response("missing", { status: 404 });
+      }
+      if (url.endsWith("/docs")) {
+        return {
+          ok: true, status: 200, url,
+          headers: new Headers({ "content-type": "text/html" }),
+          text: async () => { throw new Error("terminated response body"); },
+        } as unknown as Response;
+      }
+      if (url === "https://public.co/") {
+        return {
+          ok: true, status: 200, url,
+          headers: new Headers({ "content-type": "text/html" }),
+          text: async () => `<html><title>Public Co</title><body>${"Product analytics and session replay are available. ".repeat(4)}</body></html>`,
+        } as unknown as Response;
+      }
+      return new Response("missing", { status: 404 });
+    }));
+
+    const artifacts = [];
+    for await (const artifact of new PublicWebConnector(8, 1_000).collect(company, new AbortController().signal)) {
+      artifacts.push(artifact);
+    }
+
+    expect(artifacts).toHaveLength(1);
+    expect(artifacts[0]?.url).toBe("https://public.co/");
   });
 });

@@ -22,20 +22,26 @@ export class PublicWebConnector implements Connector {
   }
 
   private async fetchArtifact(company: CompanyConfig, url: string, signal: AbortSignal): Promise<SourceArtifact | undefined> {
-    const response = await safeFetch(url, company.domain, this.timeoutMs, signal).catch(() => undefined);
-    if (!response?.ok) return undefined;
-    const html = await response.text();
-    const content = htmlToText(html);
-    if (content.length < 120) return undefined;
-    const canonical = response.url;
-    const version = hash(content).slice(0, 16);
-    return {
-      id: stableId(company.id, "web", canonical, version), companyId: company.id, source: "web",
-      externalId: canonical, version, occurredAt: response.headers.get("last-modified") ?? isoNow(),
-      collectedAt: isoNow(), visibility: "public", title: extractTitle(html) || canonical,
-      content: content.slice(0, 80_000), url: canonical,
-      metadata: { contentType: response.headers.get("content-type"), etag: response.headers.get("etag") },
-    };
+    // A single malformed, truncated, or prematurely closed response must not
+    // discard the other successfully fetched pages in this crawl batch.
+    try {
+      const response = await safeFetch(url, company.domain, this.timeoutMs, signal);
+      if (!response.ok) return undefined;
+      const html = await response.text();
+      const content = htmlToText(html);
+      if (content.length < 120) return undefined;
+      const canonical = response.url;
+      const version = hash(content).slice(0, 16);
+      return {
+        id: stableId(company.id, "web", canonical, version), companyId: company.id, source: "web",
+        externalId: canonical, version, occurredAt: response.headers.get("last-modified") ?? isoNow(),
+        collectedAt: isoNow(), visibility: "public", title: extractTitle(html) || canonical,
+        content: content.slice(0, 80_000), url: canonical,
+        metadata: { contentType: response.headers.get("content-type"), etag: response.headers.get("etag") },
+      };
+    } catch {
+      return undefined;
+    }
   }
 
   private async discover(origin: string, domain: string, signal: AbortSignal): Promise<string[]> {
