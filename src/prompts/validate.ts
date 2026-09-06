@@ -7,6 +7,7 @@ const SECRET = /(?:sk-[a-z0-9_-]{12,}|api[_ -]?key|bearer\s+[a-z0-9._-]{12,}|pas
 const NAMED_CONSTRAINTS = ["soc 2", "hipaa", "gdpr", "fedramp", "iso 27001", "on-prem", "self-hosted", "gitlab", "github", "jira", "slack"];
 const SOLUTION_CUE = /\b(tools?|platforms?|software|solutions?|services?|vendors?|providers?|products?|systems?|apps?|apis?|infrastructure|agents?|reviewers?|alternatives?|replace|switch(?:ing)? to|what should (?:we|i) (?:use|choose|consider)|recommend)\b/i;
 const INFORMATIONAL_FRAMING = /^(?:how important is|why is|what is the importance of|what are the benefits of)\b/i;
+const QUERY_FRAGMENT_FRAMING = /\bbest for (?:vs\b|[^?]{0,80}\b(?:platform|product|vendor|tool) comparison\b)/i;
 
 export function validateCandidates(
   company: CompanyConfig,
@@ -36,6 +37,7 @@ export function validateCandidates(
     if (INFORMATIONAL_FRAMING.test(text) || !SOLUTION_CUE.test(text)) {
       findings.push(fatal("not-recommendation-seeking", "Prompt is likely to produce advice or explanation rather than a product or vendor recommendation."));
     }
+    if (QUERY_FRAGMENT_FRAMING.test(text)) findings.push(fatal("unnatural-query-fragment", "Prompt exposes an internal topic or comparison label instead of a natural buyer question."));
     if (!validPublicInference && !records.some(isBuyingSignal)) {
       findings.push(fatal("missing-buying-demand", "Demand evidence is support, implementation, retention, or operational noise rather than buying intent."));
     }

@@ -18,7 +18,7 @@ export function scaffoldCandidates(company: CompanyConfig, opportunities: Opport
       !/\b(?:free|demo|trial|signup|sign-up|pricing|contact sales|book demo)\b/i.test(humanTopic(opportunity.topic));
   }).map(opportunity => {
     const topic = humanTopic(opportunity.topic);
-    const text = `Which ${category} are best for ${topic}?`;
+    const text = scaffoldText(category, topic);
     return {
       id: stableId(company.id, "evidence-scaffold", opportunity.id, text),
       opportunityId: opportunity.id,
@@ -39,6 +39,19 @@ export function scaffoldCandidates(company: CompanyConfig, opportunities: Opport
       },
     };
   });
+}
+
+function scaffoldText(category: string, topic: string): string {
+  const alternative = topic.match(/^vs\s+(.+)$/i)?.[1];
+  if (alternative) return `What are the best alternatives to ${displayName(alternative)} among ${category}?`;
+  // Topic planners sometimes return a search-query label rather than a buyer
+  // need. Do not paste that label after "best for" verbatim.
+  if (/\b(?:platform|product|vendor|tool)?\s*comparison$/i.test(topic)) return `Which ${category} should buyers compare?`;
+  return `Which ${category} are best for ${topic}?`;
+}
+
+function displayName(value: string): string {
+  return value.split(/\s+/).map(part => part.length <= 3 ? part.toUpperCase() : `${part[0]?.toUpperCase() ?? ""}${part.slice(1)}`).join(" ");
 }
 
 function humanTopic(topic: string): string {

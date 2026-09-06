@@ -200,8 +200,11 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
     // The model supplies natural phrasing while a conservative, evidence-derived
     // scaffold guarantees coverage of every opportunity. This is faster and more
     // reliable than asking the same model for a second large backfill generation.
-    const generationOptions = { minCandidates: 16, maxCandidates: 16 };
-    const generationVersion = publicFastPath ? "generate-v7-public-diverse-pages" : "generate-v6-atomic-core-mix";
+    // Connected runs have much richer evidence and need a wider model-written
+    // pool. Sixteen was too brittle: one strict review could leave exactly ten
+    // accepted candidates, two of which might represent the same situation.
+    const generationOptions = publicFastPath ? { minCandidates: 16, maxCandidates: 16 } : { minCandidates: 24, maxCandidates: 24 };
+    const generationVersion = publicFastPath ? "generate-v7-public-diverse-pages" : "generate-v7-connected-diverse-pool";
     const generatedOutput = await cachedModelCall(db, trace, model.name, generationVersion,
       { company, opportunities, generationOptions, evidence: opportunities.flatMap(item => item.evidenceIds.map(id => evidenceById.get(id))) },
       () => model.generate(company, opportunities, evidenceById, controller.signal, generationOptions));

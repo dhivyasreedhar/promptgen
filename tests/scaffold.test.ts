@@ -24,4 +24,18 @@ describe("evidence-derived candidate scaffolds", () => {
     expect(scaffoldCandidates(company, [{ ...opportunity, evidenceBasis: "public-inference" }])[0]?.text)
       .toBe("Which software platforms are best for complex pdfs?");
   });
+
+  it("turns comparison topic labels into natural buyer questions", () => {
+    const company: CompanyConfig = { id: "reducto", name: "Reducto", domain: "reducto.ai",
+      category: "document intelligence and extraction platform", githubOrganizations: [], enabledSources: [] };
+    const candidates = scaffoldCandidates(company, [
+      { ...opportunity, id: "opp-vs", topic: "vs-llamaparse" },
+      { ...opportunity, id: "opp-comparison", topic: "document-ai-platform-comparison" },
+    ]);
+    expect(candidates.map(item => item.text)).toEqual([
+      "What are the best alternatives to Llamaparse among document intelligence and extraction platforms?",
+      "Which document intelligence and extraction platforms should buyers compare?",
+    ]);
+    expect(candidates.every(item => !/best for (?:vs|.*platform comparison)/i.test(item.text))).toBe(true);
+  });
 });

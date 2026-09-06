@@ -60,6 +60,13 @@ describe("validateCandidates", () => {
     expect(result.findings.map(item => item.code)).toContain("not-recommendation-seeking");
   });
 
+  it("rejects internal comparison labels pasted into buyer questions", () => {
+    const evidence = [baseEvidence({}), baseEvidence({ id: "e2", source: "web", visibility: "public", safeUse: "public", kind: "capability", claim: "Incident platform comparison is supported", quote: "Incident platform comparison" })];
+    const result = validate("Which incident platforms are best for incident platform comparison?", evidence);
+    expect(result.accepted).toBe(false);
+    expect(result.findings.map(item => item.code)).toContain("unnatural-query-fragment");
+  });
+
   it("accepts an explicit product-evaluation form of the same need", () => {
     const evidence = [baseEvidence({}), baseEvidence({ id: "e2", source: "web", visibility: "public", safeUse: "public", kind: "capability", claim: "Incident platforms support Slack status updates", quote: "Incident platforms support Slack status updates" })];
     expect(validate("Which incident platforms send status updates directly from Slack?", evidence).accepted).toBe(true);

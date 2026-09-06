@@ -81,6 +81,12 @@ describe("selectPrompts", () => {
     expect(selectPrompts([first, duplicate], 2).discovery).toHaveLength(1);
   });
 
+  it("keeps one on-prem deployment situation despite different compliance modifiers", () => {
+    const first = { ...candidate(0), text: "Which document platforms support VPC, on-premises, and air-gapped deployment?", semanticKey: "enterprise-deployment-options" };
+    const duplicate = { ...candidate(1), text: "What document tools can be deployed on-premises with SOC 2 compliance?", semanticKey: "onprem-soc2-deployment" };
+    expect(selectPrompts([first, duplicate], 2).discovery).toHaveLength(1);
+  });
+
   it("marks approved stable prompts as benchmark prompts", () => {
     expect(selectPrompts([candidate(0)], 1, new Set(), new Set(["c0"])).discovery[0]?.set).toBe("benchmark");
   });
