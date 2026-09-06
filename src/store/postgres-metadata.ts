@@ -375,7 +375,7 @@ export class PostgresMetadataStore implements AsyncDisposable {
       const result = await client.query(`WITH candidate AS (
           SELECT id FROM run_jobs WHERE tenant_id=$1 AND (
             (status='queued' AND available_at <= $2) OR (status='running' AND lease_expires_at < $2)
-          ) ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1
+          ) ORDER BY CASE WHEN payload->>'fixtures'='false' THEN 0 ELSE 1 END, created_at FOR UPDATE SKIP LOCKED LIMIT 1
         ) UPDATE run_jobs j SET status='running',started_at=coalesce(j.started_at,$2),lease_owner=$3,
           lease_expires_at=$4,attempts=j.attempts+1 FROM candidate WHERE j.id=candidate.id RETURNING j.*`,
       [this.tenantId, now.toISOString(), owner, leaseExpiresAt]);

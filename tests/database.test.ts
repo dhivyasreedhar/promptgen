@@ -45,4 +45,14 @@ describe("EvidenceDatabase", () => {
     expect(db.requestJobCancellation("job-1", new Date(now))).toBe(true);
     expect(db.isCancellationRequested("job-1")).toBe(true);
   });
+
+  it("prioritizes interactive public jobs over queued fixture-heavy runs", () => {
+    const file = path.join(tmpdir(), `promptgen-${crypto.randomUUID()}.db`); files.push(file, `${file}-shm`, `${file}-wal`);
+    using db = new EvidenceDatabase(file);
+    const privateCompany = { id: "private", name: "Private", domain: "private.test", category: "tools", githubOrganizations: [], enabledSources: ["web" as const] };
+    const publicCompany = { ...privateCompany, id: "public", name: "Public", domain: "public.test" };
+    db.enqueueJob({ id: "private-job", company: privateCompany, fixtures: true, createdAt: "2026-09-04T00:00:00.000Z" });
+    db.enqueueJob({ id: "public-job", company: publicCompany, fixtures: false, createdAt: "2026-09-04T00:01:00.000Z" });
+    expect(db.claimJob("worker", new Date("2026-09-04T00:02:00.000Z"), 60_000)?.id).toBe("public-job");
+  });
 });

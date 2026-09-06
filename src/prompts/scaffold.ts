@@ -47,7 +47,7 @@ function scaffoldText(category: string, topic: string): string {
   // Topic planners sometimes return a search-query label rather than a buyer
   // need. Do not paste that label after "best for" verbatim.
   if (/\b(?:platform|product|vendor|tool)?\s*comparison$/i.test(topic)) return `Which ${category} should buyers compare?`;
-  return `Which ${category} are best for ${topic}?`;
+  return `Which ${category} should buyers evaluate for ${topic}?`;
 }
 
 function displayName(value: string): string {
@@ -61,6 +61,8 @@ function humanTopic(topic: string): string {
 function categoryPhrase(category: string): string {
   const normalized = category.trim().replace(/\.$/, "");
   if (/^company or product$/i.test(normalized)) return "software platforms";
+  const infrastructure = normalized.match(/^(.+?) infrastructure for (.+?) applications$/i);
+  if (infrastructure) return `${infrastructure[2]} application ${infrastructure[1]} platforms`;
   if (/\bplatform$/i.test(normalized)) return normalized.replace(/platform$/i, "platforms");
   if (/\btool$/i.test(normalized)) return normalized.replace(/tool$/i, "tools");
   if (/\bapi$/i.test(normalized)) return normalized.replace(/api$/i, "APIs");

@@ -20,7 +20,7 @@ const envSchema = z.object({
   PROMPTGEN_MAX_PUBLIC_PAGES: z.coerce.number().int().min(1).max(100).default(20),
   PROMPTGEN_REQUEST_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120_000).default(15_000),
   PROMPTGEN_MODEL_TIMEOUT_MS: z.coerce.number().int().min(10_000).max(900_000).default(300_000),
-  PROMPTGEN_JOB_CONCURRENCY: z.coerce.number().int().min(1).max(4).default(1),
+  PROMPTGEN_JOB_CONCURRENCY: z.coerce.number().int().min(1).max(4).default(2),
   PROMPTGEN_DAILY_AT: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).default("02:00"),
   PROMPTGEN_TIMEZONE: z.string().default("UTC"),
   PROMPTGEN_HOST: z.string().min(1).default("127.0.0.1"),

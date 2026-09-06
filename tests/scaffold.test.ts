@@ -13,7 +13,7 @@ describe("evidence-derived candidate scaffolds", () => {
     const company: CompanyConfig = { id: "reducto", name: "Reducto", domain: "reducto.ai",
       category: "document intelligence and extraction platform", githubOrganizations: [], enabledSources: [] };
     expect(scaffoldCandidates(company, [opportunity])).toEqual([expect.objectContaining({
-      text: "Which document intelligence and extraction platforms are best for complex pdfs?",
+      text: "Which document intelligence and extraction platforms should buyers evaluate for complex pdfs?",
       opportunityId: "opp-1", evidenceIds: ["demand-1", "capability-1"], evidenceBasis: "observed-demand",
     })]);
   });
@@ -22,7 +22,7 @@ describe("evidence-derived candidate scaffolds", () => {
     const company: CompanyConfig = { id: "domain-acme", name: "Acme", domain: "acme.test",
       category: "company or product", githubOrganizations: [], enabledSources: ["web"] };
     expect(scaffoldCandidates(company, [{ ...opportunity, evidenceBasis: "public-inference" }])[0]?.text)
-      .toBe("Which software platforms are best for complex pdfs?");
+      .toBe("Which software platforms should buyers evaluate for complex pdfs?");
   });
 
   it("turns comparison topic labels into natural buyer questions", () => {
@@ -37,5 +37,12 @@ describe("evidence-derived candidate scaffolds", () => {
       "Which document intelligence and extraction platforms should buyers compare?",
     ]);
     expect(candidates.every(item => !/best for (?:vs|.*platform comparison)/i.test(item.text))).toBe(true);
+  });
+
+  it("turns descriptive infrastructure categories into a grammatical product phrase", () => {
+    const company: CompanyConfig = { id: "supermemory", name: "Supermemory", domain: "supermemory.ai",
+      category: "memory infrastructure for AI applications", githubOrganizations: [], enabledSources: [] };
+    expect(scaffoldCandidates(company, [{ ...opportunity, topic: "edge-and-global-latency-reliability" }])[0]?.text)
+      .toBe("Which AI application memory platforms should buyers evaluate for edge and global latency reliability?");
   });
 });
