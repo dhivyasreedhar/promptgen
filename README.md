@@ -1,4 +1,4 @@
-# Manicule Promptgen V2
+#  Promptgen 
 
 An evidence-first daily pipeline for generating AI-agent tracking prompts. It ingests public and private company context, converts source artifacts into traceable evidence, retrieves context per evidence need, discovers supported buyer opportunities, and returns exactly ten discovery prompts or an explicit `insufficient_evidence` result.
 
