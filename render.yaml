@@ -50,7 +50,7 @@ services:
     numInstances: 2
     autoDeploy: true
     preDeployCommand: node dist/src/cli.js postgres-migrate
-    dockerCommand: node dist/scripts/generate-fixtures.js && node dist/src/cli.js worker
+    dockerCommand: node dist/src/cli.js worker
     envVars:
       - fromGroup: promptgen-shared
       - key: PROMPTGEN_INLINE_WORKER
@@ -64,6 +64,6 @@ services:
     plan: starter
     schedule: "0 10 * * *"
     preDeployCommand: node dist/src/cli.js postgres-migrate
-    dockerCommand: node dist/scripts/generate-fixtures.js && node dist/src/cli.js canary --fixtures
+    dockerCommand: node dist/src/cli.js canary --fixtures
     envVars:
       - fromGroup: promptgen-shared
