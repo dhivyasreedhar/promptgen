@@ -101,6 +101,15 @@ const NAMED_FACETS = ["gitlab", "github", "jira", "slack", "pagerduty", "soc 2",
 const CONCEPTS = [
   [/\b(?:ai|artificial intelligence)\b/i, /\bautomat(?:e|es|ed|ing|ion)\b/i],
   [/\bpostmortem|retrospective\b/i, /\baudit|timeline\b/i],
+  // Different generations often describe the same end-to-end agent-run
+  // debugging situation with "execution", "session", or "run". Keep a
+  // distinct tool-call/cost prompt, but do not spend two tracking slots on
+  // equivalent run-tracing wording.
+  [/\b(?:ai|agent|agents)\b/i, /\btrac(?:e|es|ed|ing)\b/i, /\b(?:run|runs|execution|session)\b/i],
+  // Likewise, browser-to-database and frontend-to-database are the same
+  // full-stack tracing situation. A focused bottleneck or third-party-service
+  // question can still survive because it lacks the endpoint span below.
+  [/\b(?:full[- ]stack|front[- ]?end|browser)\b/i, /\b(?:database|api call|api calls)\b/i, /\btrac(?:e|es|ed|ing)\b/i],
 ];
 
 const KEY_SYNONYMS: Record<string, string> = {

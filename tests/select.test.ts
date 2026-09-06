@@ -68,6 +68,19 @@ describe("selectPrompts", () => {
     expect(selectPrompts([first, duplicate], 2).discovery).toHaveLength(1);
   });
 
+  it("collapses equivalent end-to-end AI agent run tracing prompts", () => {
+    const first = { ...candidate(0), text: "Which observability tools trace every AI agent run end to end so teams can debug failures?", semanticKey: "ai-agent-observability" };
+    const duplicate = { ...candidate(1), text: "What platforms trace the full execution of agent runs and show the session where it broke?", semanticKey: "agent-run-debugging" };
+    const distinct = { ...candidate(2), text: "What tools catch bad AI agent tool calls and visualize spend across agents?", semanticKey: "agent-tool-call-cost-monitoring" };
+    expect(selectPrompts([first, duplicate, distinct], 3).discovery).toHaveLength(2);
+  });
+
+  it("collapses browser-to-database and frontend-to-database tracing wording", () => {
+    const first = { ...candidate(0), text: "What tools trace frontend performance issues back to slow API calls or database queries?", semanticKey: "frontend-backend-tracing" };
+    const duplicate = { ...candidate(1), text: "Which observability tools trace requests from browser to database in one view?", semanticKey: "browser-database-tracing" };
+    expect(selectPrompts([first, duplicate], 2).discovery).toHaveLength(1);
+  });
+
   it("marks approved stable prompts as benchmark prompts", () => {
     expect(selectPrompts([candidate(0)], 1, new Set(), new Set(["c0"])).discovery[0]?.set).toBe("benchmark");
   });
