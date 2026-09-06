@@ -34,12 +34,6 @@ services:
     preDeployCommand: node dist/src/cli.js postgres-migrate && node dist/src/cli.js eval-release-gate
     envVars:
       - fromGroup: promptgen-shared
-      - key: ANTHROPIC_API_KEY
-        sync: false
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: DATABASE_URL
-        sync: false
       - key: PROMPTGEN_HOST
         value: 0.0.0.0
       - key: PROMPTGEN_ALLOW_PUBLIC_ACCESS
@@ -59,12 +53,6 @@ services:
     dockerCommand: sh -c 'node dist/scripts/generate-fixtures.js && node dist/src/cli.js worker'
     envVars:
       - fromGroup: promptgen-shared
-      - key: ANTHROPIC_API_KEY
-        sync: false
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: DATABASE_URL
-        sync: false
       - key: PROMPTGEN_INLINE_WORKER
         value: false
       - key: PROMPTGEN_SCHEDULER_ENABLED
@@ -79,9 +67,3 @@ services:
     dockerCommand: sh -c 'node dist/scripts/generate-fixtures.js && node dist/src/cli.js canary --fixtures'
     envVars:
       - fromGroup: promptgen-shared
-      - key: ANTHROPIC_API_KEY
-        sync: false
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: DATABASE_URL
-        sync: false
