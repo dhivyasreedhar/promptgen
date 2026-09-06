@@ -43,17 +43,25 @@ export async function runDailyCanaries(config: AppConfig, fixtures: boolean): Pr
   const id = `canary-${randomUUID()}`;
   const startedAt = isoNow();
   const companies: CompanyCanaryResult[] = [];
-  for (const company of config.companies.slice(0, 4)) {
-    companies.push(await runCompanyCanary(config, company, fixtures));
-    using checkpoint = new EvidenceDatabase(config.dbPath);
-    checkpoint.recordCanaryReport({ id, startedAt, completedAt: isoNow(), passed: false, state: "running", companies });
+  const hosted = config.postgresUrl ? new PostgresMetadataStore(config.postgresUrl, config.tenantId, config.tenantName) : undefined;
+  try {
+    for (const company of config.companies.slice(0, 4)) {
+      companies.push(await runCompanyCanary(config, company, fixtures));
+      const checkpointReport: DailyCanaryReport = { id, startedAt, completedAt: isoNow(), passed: false, state: "running", companies };
+      using checkpoint = new EvidenceDatabase(config.dbPath);
+      checkpoint.recordCanaryReport(checkpointReport);
+      await hosted?.recordCanaryReport(checkpointReport);
+    }
+    const report: DailyCanaryReport = { id, startedAt, completedAt: isoNow(), passed: companies.every(item => item.passed), state: "completed", companies };
+    using db = new EvidenceDatabase(config.dbPath);
+    db.recordCanaryReport(report);
+    await hosted?.recordCanaryReport(report);
+    log(report.passed ? "info" : "warn", "canary.completed", { id, passed: report.passed,
+      companies: companies.map(item => ({ companyId: item.companyId, passed: item.passed, retainedPrevious: item.retainedPrevious })) });
+    return report;
+  } finally {
+    await hosted?.close();
   }
-  const report: DailyCanaryReport = { id, startedAt, completedAt: isoNow(), passed: companies.every(item => item.passed), state: "completed", companies };
-  using db = new EvidenceDatabase(config.dbPath);
-  db.recordCanaryReport(report);
-  log(report.passed ? "info" : "warn", "canary.completed", { id, passed: report.passed,
-    companies: companies.map(item => ({ companyId: item.companyId, passed: item.passed, retainedPrevious: item.retainedPrevious })) });
-  return report;
 }
 
 /** Re-grade the most recent staged set per company after judge/configuration repair, without regenerating prompts. */

@@ -44,9 +44,9 @@ export async function serve(config: AppConfig, fixtures: boolean): Promise<void>
   });
   const triggerJobs = () => void processJobs(config, hosted)
     .catch(error => log("error", "job.worker-failed", { error: errorMessage(error) }));
-  triggerJobs();
-  const queueTick = setInterval(triggerJobs, 5_000);
-  queueTick.unref();
+  if (config.inlineWorker) triggerJobs();
+  const queueTick = config.inlineWorker ? setInterval(triggerJobs, 5_000) : undefined;
+  queueTick?.unref();
   const schedulerOwner = `${process.pid}:${randomUUID()}`;
   const schedulerTick = config.schedulerEnabled ? setInterval(() => {
     const now = new Date();
@@ -59,14 +59,14 @@ export async function serve(config: AppConfig, fixtures: boolean): Promise<void>
   schedulerTick?.unref();
   let shuttingDown = false;
   const shutdown = async () => {
-    if (shuttingDown) return; shuttingDown = true; clearInterval(queueTick); if (schedulerTick) clearInterval(schedulerTick);
+    if (shuttingDown) return; shuttingDown = true; if (queueTick) clearInterval(queueTick); if (schedulerTick) clearInterval(schedulerTick);
     await new Promise<void>(resolve => server.close(() => resolve()));
     while (processing) await new Promise(resolve => setTimeout(resolve, 100));
     await hosted?.close();
   };
   process.once("SIGINT", () => void shutdown());
   process.once("SIGTERM", () => void shutdown());
-  log("info", "server.started", { url: `http://${config.host}:${config.port}`, fixtures, schedulerEnabled: config.schedulerEnabled,
+  log("info", "server.started", { url: `http://${config.host}:${config.port}`, fixtures, schedulerEnabled: config.schedulerEnabled, inlineWorker: config.inlineWorker,
     access: config.accessPassword ? "password-protected" : config.allowPublicAccess ? "public" : "loopback-only" });
 }
 
@@ -107,19 +107,20 @@ async function route(config: AppConfig, fixtures: boolean, hosted: PostgresMetad
   }
   if (request.method === "GET" && url.pathname === "/api/quality") {
     using db = new EvidenceDatabase(config.dbPath);
-    json(response, 200, { latestCanary: db.latestCanaryReport() ?? null }); return;
+    json(response, 200, { latestCanary: hosted ? await hosted.latestCanaryReport() ?? null : db.latestCanaryReport() ?? null }); return;
   }
   if (request.method === "POST" && request.headers.origin && new URL(request.headers.origin).host !== request.headers.host) {
     json(response, 403, { error: "Cross-origin mutation denied" }); return;
   }
   if (request.method === "GET" && url.pathname === "/api/runs") {
     using db = new EvidenceDatabase(config.dbPath);
-    json(response, 200, { companies: config.companies, runs: await Promise.all(db.latestResults().map(result => presentRun(db, result, hosted))), active: hosted ? await hosted.activeJobCompanyIds() : db.activeJobCompanyIds() }); return;
+    const storedRuns = hosted ? await hosted.latestPublishedResults() : db.latestResults();
+    json(response, 200, { companies: config.companies, runs: await Promise.all(storedRuns.map(result => presentRun(db, result, hosted))), active: hosted ? await hosted.activeJobCompanyIds() : db.activeJobCompanyIds() }); return;
   }
   const traceMatch = url.pathname.match(/^\/api\/runs\/([A-Za-z0-9-]+)\/trace$/);
   if (request.method === "GET" && traceMatch?.[1]) {
     using db = new EvidenceDatabase(config.dbPath);
-    const events = db.traceForRun(traceMatch[1]);
+    const events = hosted ? await hosted.traceForRun(traceMatch[1]) : db.traceForRun(traceMatch[1]);
     if (events.length === 0) { json(response, 404, { error: "Trace not found" }); return; }
     const stages: Record<string, number> = {}, actions: Record<string, number> = {}, rejectionReasons: Record<string, number> = {};
     const modelDurations: Array<{ operation: string; provider?: string; durationMs: number }> = [];
@@ -206,7 +207,7 @@ async function route(config: AppConfig, fixtures: boolean, hosted: PostgresMetad
     using db = new EvidenceDatabase(config.dbPath);
     const input = { id: randomUUID(), company, fixtures, createdAt: new Date().toISOString() };
     const job = hosted ? await hosted.enqueueJob(input) : db.enqueueJob(input);
-    void processJobs(config, hosted).catch(error => log("error", "job.worker-failed", { error: errorMessage(error) }));
+    if (config.inlineWorker) void processJobs(config, hosted).catch(error => log("error", "job.worker-failed", { error: errorMessage(error) }));
     json(response, 202, { jobId: job.id, companyId: job.companyId, status: job.status }); return;
   }
   if (request.method === "POST" && url.pathname === "/api/run-domain") {
@@ -215,12 +216,22 @@ async function route(config: AppConfig, fixtures: boolean, hosted: PostgresMetad
     const configured = config.companies.find(item => item.domain === domain || `www.${item.domain}` === domain || item.domain === domain.replace(/^www\./, ""));
     const company = configured ?? publicCompany(domain);
     using db = new EvidenceDatabase(config.dbPath);
+    if (body.force !== true) {
+      const stored = hosted ? await hosted.latestPublishedResult(company.id)
+        : db.latestResults().find(result => result.companyId === company.id && result.status === "complete");
+      if (stored) {
+        const presented = await presentRun(db, stored, hosted);
+        if (shouldUseFreshResult(presented)) {
+          json(response, 200, { cached: true, companyId: company.id, result: presented }); return;
+        }
+      }
+    }
     // Configured demo companies deliberately ship with simulated private
     // sources. Keep them enabled even if the process was started without the
     // optional CLI flag; unknown domains remain public-only.
     const input = { id: randomUUID(), company, fixtures: useFixturesForDomain(configured), createdAt: new Date().toISOString() };
     const job = hosted ? await hosted.enqueueJob(input) : db.enqueueJob(input);
-    void processJobs(config, hosted).catch(error => log("error", "job.worker-failed", { error: errorMessage(error) }));
+    if (config.inlineWorker) void processJobs(config, hosted).catch(error => log("error", "job.worker-failed", { error: errorMessage(error) }));
     json(response, 202, { jobId: job.id, companyId: job.companyId, status: job.status }); return;
   }
   if (request.method === "GET" && (url.pathname === "/" || url.pathname === "/index.html" || url.pathname === "/prompts")) {
@@ -232,7 +243,7 @@ async function route(config: AppConfig, fixtures: boolean, hosted: PostgresMetad
   json(response, 404, { error: "Not found" });
 }
 
-async function processJobs(config: AppConfig, hosted?: PostgresMetadataStore): Promise<void> {
+export async function processJobs(config: AppConfig, hosted?: PostgresMetadataStore): Promise<void> {
   if (processing) return;
   processing = true;
   try {
@@ -250,6 +261,23 @@ async function processJobs(config: AppConfig, hosted?: PostgresMetadataStore): P
   } finally {
     processing = false;
   }
+}
+
+/** Long-running worker process. Multiple replicas safely share the Postgres queue via SKIP LOCKED leases. */
+export async function work(config: AppConfig): Promise<void> {
+  if (!config.postgresUrl) throw new Error("DATABASE_URL is required for a horizontal worker");
+  const hosted = new PostgresMetadataStore(config.postgresUrl, config.tenantId, config.tenantName);
+  let stopping = false;
+  const stop = () => { stopping = true; };
+  process.once("SIGINT", stop); process.once("SIGTERM", stop);
+  log("info", "worker.started", { concurrency: 1, queue: "postgres-skip-locked" });
+  try {
+    while (!stopping) {
+      await processJobs(config, hosted).catch(error => log("error", "job.worker-failed", { error: errorMessage(error) }));
+      if (!stopping) await new Promise(resolve => setTimeout(resolve, 1_000));
+    }
+    while (processing) await new Promise(resolve => setTimeout(resolve, 100));
+  } finally { await hosted.close(); }
 }
 
 async function processClaimedJob(config: AppConfig, hosted: PostgresMetadataStore | undefined, job: RunJob, owner: string): Promise<void> {
@@ -354,6 +382,15 @@ export function useFixturesForDomain(configured: CompanyConfig | undefined): boo
   return Boolean(configured);
 }
 
+/** A normal domain submission is idempotent for today's complete prompt set. */
+export function shouldUseFreshResult(result: RunResult, now = new Date(), maxAgeMs = 20 * 60 * 60_000): boolean {
+  const completedAt = Date.parse(result.completedAt);
+  if (result.status !== "complete" || !Number.isFinite(completedAt) || now.getTime() - completedAt >= maxAgeMs) return false;
+  const keys = new Set([...(result.benchmarkPrompts ?? []), ...result.discoveryPrompts]
+    .map(prompt => prompt.semanticKey ?? prompt.id));
+  return keys.size === 10;
+}
+
 async function presentRun(db: EvidenceDatabase, result: RunResult, hosted?: PostgresMetadataStore): Promise<RunResult & { evidence: Record<string, PresentedEvidence>; sourceHealth: ReturnType<EvidenceDatabase["sourceHealth"]> }> {
   const [benchmarkPrompts, promptStates] = hosted ? await Promise.all([hosted.benchmarkPrompts(result.companyId), hosted.promptStates(result.companyId)]) : [[], []];
   const states = new Map(promptStates.map(prompt => [prompt.stableKey, prompt]));
@@ -368,10 +405,13 @@ async function presentRun(db: EvidenceDatabase, result: RunResult, hosted?: Post
   const discoveryPrompts = trackingSet.discovery;
   const presentedBenchmarks = trackingSet.benchmarks;
   const ids = [...discoveryPrompts, ...presentedBenchmarks].flatMap(prompt => prompt.evidenceIds);
-  const records = db.evidenceByIds(ids);
-  const artifacts = new Map(db.artifactsByIds(records.map(record => record.artifactId)).map(artifact => [artifact.id, artifact]));
+  const sharedRecords = hosted ? await hosted.evidenceByExternalIds(ids) : [];
+  const records = [...new Map([...sharedRecords, ...db.evidenceByIds(ids)].map(record => [record.id, record])).values()];
+  const sharedArtifacts = hosted ? await hosted.artifactsByLocalKeys(records.map(record => record.artifactId)) : [];
+  const artifacts = new Map([...sharedArtifacts, ...db.artifactsByIds(records.map(record => record.artifactId))].map(artifact => [artifact.id, artifact]));
   const evidence = Object.fromEntries(records.map(record => [record.id, presentEvidence(record, artifacts.get(record.artifactId))]));
-  return { ...result, discoveryPrompts, benchmarkPrompts: presentedBenchmarks, evidence, sourceHealth: db.sourceHealth(result.companyId) };
+  const sourceHealth = hosted ? await hosted.sourceHealth(result.companyId) : db.sourceHealth(result.companyId);
+  return { ...result, discoveryPrompts, benchmarkPrompts: presentedBenchmarks, evidence, sourceHealth };
 }
 
 function validateCustomerPrompt(input: string): string {
@@ -451,12 +491,12 @@ function render(run){
   const coverage=run.coverage?'<div class="empty coverage-summary"><strong>'+run.coverage.useCases.length+' distinct buying situations.</strong></div>':'';
   const updated=formatDate(run.completedAt);const contextLabel=hasPrivate?'Public + connected context':'Public sources';const version=run.buildVersion?' · build '+escapeHtml(run.buildVersion.slice(0,7)):'';
   results.innerHTML='<button class="back-home" id="back-home">← New domain</button><div class="result-head"><div><div class="eyebrow">Prompts worth tracking</div><h2>'+escapeHtml(run.companyName)+'</h2><div class="meta"><span class="pill '+escapeHtml(run.status)+'">'+escapeHtml(status)+'</span><span>'+prompts.length+' prompts</span><span>'+contextLabel+'</span><span>Updated '+escapeHtml(updated)+version+'</span></div></div><div><button class="refresh add-prompt" id="add-prompt">+ Add prompt</button> <button class="refresh" id="refresh">Run again</button></div></div>'+coverage+'<details class="diagnostics"><summary>Technical details</summary><button class="refresh" id="trace">Load run trace</button><div id="trace-summary"></div></details>'+cards;
-  document.querySelector('#back-home').onclick=()=>showLanding();document.querySelector('#refresh').onclick=()=>analyze(run.domain);document.querySelector('#add-prompt').onclick=()=>openPromptDialog('add');document.querySelector('#trace').onclick=async()=>{const panel=document.querySelector('#trace-summary');panel.innerHTML='<div class="empty">Loading trace…</div>';try{const response=await fetch('/api/runs/'+encodeURIComponent(run.runId)+'/trace');const trace=await parseApiResponse(response,'Trace unavailable');const failures=(trace.sourceFailures||[]).map(item=>escapeHtml(item.source)+': '+escapeHtml(item.error||'failed')).join(' · ')||'none';const modelTimes=(trace.modelDurations||[]).map(item=>escapeHtml(item.operation)+': '+Math.round(item.durationMs/1000)+'s').join(' · ')||'none';panel.innerHTML='<div class="empty"><strong>'+trace.totalEvents+' trace events · '+Math.round(trace.durationMs/1000)+'s</strong><br>Model calls: '+modelTimes+'<br>Stages: '+Object.entries(trace.stages).map(([key,value])=>escapeHtml(key)+': '+value).join(' · ')+'<br>Source failures: '+failures+'<br>Reconciliation: '+(Object.entries(trace.reconciliation).map(([key,value])=>escapeHtml(key)+': '+value).join(' · ')||'none')+'<br>Privacy transformations: '+(trace.privacyTransformations||[]).length+' inspectable records (hashes + rules, no raw private text)<br>Top rejections: '+(trace.rejectionReasons.map(item=>escapeHtml(item[0])+': '+item[1]).join(' · ')||'none')+'</div>'}catch(error){panel.innerHTML='<div class="empty">'+escapeHtml(error.message)+'</div>'}};
+  document.querySelector('#back-home').onclick=()=>showLanding();document.querySelector('#refresh').onclick=()=>analyze(run.domain,true);document.querySelector('#add-prompt').onclick=()=>openPromptDialog('add');document.querySelector('#trace').onclick=async()=>{const panel=document.querySelector('#trace-summary');panel.innerHTML='<div class="empty">Loading trace…</div>';try{const response=await fetch('/api/runs/'+encodeURIComponent(run.runId)+'/trace');const trace=await parseApiResponse(response,'Trace unavailable');const failures=(trace.sourceFailures||[]).map(item=>escapeHtml(item.source)+': '+escapeHtml(item.error||'failed')).join(' · ')||'none';const modelTimes=(trace.modelDurations||[]).map(item=>escapeHtml(item.operation)+': '+Math.round(item.durationMs/1000)+'s').join(' · ')||'none';panel.innerHTML='<div class="empty"><strong>'+trace.totalEvents+' trace events · '+Math.round(trace.durationMs/1000)+'s</strong><br>Model calls: '+modelTimes+'<br>Stages: '+Object.entries(trace.stages).map(([key,value])=>escapeHtml(key)+': '+value).join(' · ')+'<br>Source failures: '+failures+'<br>Reconciliation: '+(Object.entries(trace.reconciliation).map(([key,value])=>escapeHtml(key)+': '+value).join(' · ')||'none')+'<br>Privacy transformations: '+(trace.privacyTransformations||[]).length+' inspectable records (hashes + rules, no raw private text)<br>Top rejections: '+(trace.rejectionReasons.map(item=>escapeHtml(item[0])+': '+item[1]).join(' · ')||'none')+'</div>'}catch(error){panel.innerHTML='<div class="empty">'+escapeHtml(error.message)+'</div>'}};
   document.querySelectorAll('[data-evidence]').forEach(button=>button.onclick=()=>{const panel=document.getElementById(button.dataset.evidence);const open=panel.classList.toggle('open');button.setAttribute('aria-expanded',String(open));});document.querySelectorAll('[data-action]').forEach(button=>button.onclick=async()=>{const prompt=findPrompt(button.dataset.prompt);if(!prompt)return;if(button.dataset.action==='edit'){openPromptDialog('edit',prompt);return}if(button.dataset.action==='remove'&&!confirm('Remove this prompt from the tracking set?'))return;button.disabled=true;const status=button.parentElement.querySelector('.feedback-status');try{const verdict=button.dataset.action==='pin'?'approved':'rejected';await requestJson('/api/prompts/'+encodeURIComponent(run.companyId)+'/'+encodeURIComponent(prompt.id)+'/feedback',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({verdict,reason:verdict==='rejected'?'other':undefined,ruleScope:'prompt'})});status.textContent=verdict==='approved'?'Saved as benchmark':'Removed';await refreshActive()}catch(error){status.textContent=error.message;button.disabled=false}});results.scrollIntoView({behavior:'smooth',block:'start'});
 }
 async function waitForJob(jobId){const deadline=Date.now()+15*60*1000;let delay=900,lastAttempts=0;while(Date.now()<deadline){const response=await fetch('/api/jobs/'+encodeURIComponent(jobId));if([502,503,504].includes(response.status)){progressMessage.textContent='The demo service is restarting; reconnecting automatically…';await new Promise(resolve=>setTimeout(resolve,delay));delay=Math.min(3000,Math.round(delay*1.25));continue}const body=await parseApiResponse(response,'Could not read analysis job');updateProgressPhase(body.status);if((body.attempts||0)>lastAttempts&&lastAttempts>0)progressMessage.textContent='A deployment interrupted this run; the worker resumed it automatically.';lastAttempts=body.attempts||lastAttempts;if(body.status==='cancelled')throw new Error('Analysis was cancelled');if(body.status==='complete'||body.status==='failed'){if(body.result)return body.result;throw new Error(body.error||'Analysis failed')}await new Promise(resolve=>setTimeout(resolve,delay));delay=Math.min(3000,Math.round(delay*1.25))}throw new Error('Analysis is still running. Return to this URL to reconnect to the saved job.')}
 async function resumeJob(domain,jobId){shell.classList.add('results-mode');startProgress(domain,jobId);try{const result=await waitForJob(jobId);render(result);await load()}catch(error){sessionStorage.removeItem('promptgen-job:'+domain);showLanding(false);showError(error.message||String(error))}}
-async function analyze(domain){showError('');const normalized=cleanDomain(domain);if(!normalized){showError('Enter a valid company domain.');return}shell.classList.add('results-mode');if(location.pathname==='/prompts')history.replaceState({domain:normalized},'', '/prompts?domain='+encodeURIComponent(normalized));else history.pushState({domain:normalized},'', '/prompts?domain='+encodeURIComponent(normalized));submit.disabled=true;submit.textContent='Analyzing…';results.classList.remove('visible');try{const response=await fetch('/api/run-domain',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({domain:normalized})});const body=await parseApiResponse(response,'Could not start the analysis');sessionStorage.setItem('promptgen-job:'+normalized,body.jobId);startProgress(normalized,body.jobId);const result=await waitForJob(body.jobId);render(result);await load()}catch(error){sessionStorage.removeItem('promptgen-job:'+normalized);showLanding(false);showError(error.message||String(error))}finally{submit.disabled=false;submit.textContent='Find prompts'}}
+async function analyze(domain,force=false){showError('');const normalized=cleanDomain(domain);if(!normalized){showError('Enter a valid company domain.');return}shell.classList.add('results-mode');if(location.pathname==='/prompts')history.replaceState({domain:normalized},'', '/prompts?domain='+encodeURIComponent(normalized));else history.pushState({domain:normalized},'', '/prompts?domain='+encodeURIComponent(normalized));submit.disabled=true;submit.textContent='Analyzing…';results.classList.remove('visible');try{const response=await fetch('/api/run-domain',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({domain:normalized,force})});const body=await parseApiResponse(response,'Could not start the analysis');if(body.cached&&body.result){render(body.result);await load();return}sessionStorage.setItem('promptgen-job:'+normalized,body.jobId);startProgress(normalized,body.jobId);const result=await waitForJob(body.jobId);render(result);await load()}catch(error){sessionStorage.removeItem('promptgen-job:'+normalized);showLanding(false);showError(error.message||String(error))}finally{submit.disabled=false;submit.textContent='Find prompts'}}
 cancelRun.addEventListener('click',async()=>{if(!activeJobId)return;cancelRun.disabled=true;progressMessage.textContent='Cancelling analysis…';try{await requestJson('/api/jobs/'+encodeURIComponent(activeJobId)+'/cancel',{method:'POST'});}catch(error){showError(error.message||String(error))}finally{cancelRun.disabled=false}});
 form.addEventListener('submit',event=>{event.preventDefault();analyze(input.value)});
 promptDialogCancel.addEventListener('click',()=>promptDialog.close());

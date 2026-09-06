@@ -29,7 +29,8 @@ export class HostedEvidenceRetriever {
           this.onHostedError?.(error instanceof Error ? error.message : String(error));
         }
       }
-      const byId = new Map(this.local.evidenceByIds(hits.map(hit => hit.evidenceId)).map(record => [record.id, record]));
+      const sharedRecords = await this.hosted.evidenceByExternalIds(hits.map(hit => hit.evidenceId));
+      const byId = new Map([...sharedRecords, ...this.local.evidenceByIds(hits.map(hit => hit.evidenceId))].map(record => [record.id, record]));
       const fused = new Map<string, RankedEvidence>();
       hits.forEach((hit, rank) => { const evidence = byId.get(hit.evidenceId); if (evidence) fused.set(evidence.id,
         { evidence, score: 1 / (60 + rank + 1), reasons: ["hosted-hybrid-rank", `hosted-score:${hit.score.toFixed(3)}`] }); });

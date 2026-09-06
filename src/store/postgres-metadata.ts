@@ -45,10 +45,11 @@ export class PostgresMetadataStore implements AsyncDisposable {
     await this.transaction(async client => {
       const companyId = await this.ensureCompany(client, company);
       const runUuid = stableUuid("run", result.runId);
-      await client.query(`INSERT INTO runs(id,tenant_id,company_id,status,provider,started_at,completed_at,result,error)
-        VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9)
-        ON CONFLICT(id) DO UPDATE SET status=excluded.status,provider=excluded.provider,completed_at=excluded.completed_at,result=excluded.result,error=excluded.error`,
-      [runUuid, this.tenantId, companyId, result.status, result.provider, result.startedAt, result.completedAt, JSON.stringify(result), result.error ?? null]);
+      await client.query(`INSERT INTO runs(id,tenant_id,company_id,status,provider,started_at,completed_at,result,error,published)
+        VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10)
+        ON CONFLICT(id) DO UPDATE SET status=excluded.status,provider=excluded.provider,completed_at=excluded.completed_at,
+          result=excluded.result,error=excluded.error,published=runs.published OR excluded.published`,
+      [runUuid, this.tenantId, companyId, result.status, result.provider, result.startedAt, result.completedAt, JSON.stringify(result), result.error ?? null, publishPrompts]);
       for (const item of health) {
         await client.query(`INSERT INTO source_connections(tenant_id,company_id,source,status,cursor,last_attempt_at,last_success_at,last_error)
           VALUES($1,$2,$3,$4,$5::jsonb,$6,$7,$8)
@@ -236,18 +237,18 @@ export class PostgresMetadataStore implements AsyncDisposable {
         await client.query("DELETE FROM evidence WHERE tenant_id=$1 AND company_id=$2 AND artifact_id=ANY($3::uuid[])", [this.tenantId, companyId, artifactUuids]);
         const rows = batch.flatMap(item => item.records.map(record => ({ id: stableUuid("evidence", this.tenantId, company.id, record.id), external_key: record.id,
           artifact_id: stableUuid("artifact", this.tenantId, company.id, item.artifactId), source: record.source, visibility: record.visibility,
-          kind: record.kind, claim: record.claim, tags: record.tags, product_line: record.productLine ?? null, segment: record.segment ?? null,
+          kind: record.kind, claim: record.claim, quote: record.quote, tags: record.tags, product_line: record.productLine ?? null, segment: record.segment ?? null,
           confidence: record.confidence, authority: record.authority ?? 0.5, lifecycle: record.lifecycle ?? "unknown",
           valid_from: record.validFrom ?? null, valid_to: record.validTo ?? null, occurred_at: record.occurredAt,
           extractor_version: record.extractorVersion, safe_use: record.safeUse,
           acl_scopes: record.aclScopes ?? [record.visibility === "public" ? "public" : "company"],
           buyer_intent: record.buyerIntent ?? "irrelevant" })));
         if (rows.length > 0) await client.query(`INSERT INTO evidence(id,tenant_id,company_id,external_key,artifact_id,source,visibility,kind,
-          claim,tags,product_line,segment,confidence,authority,lifecycle,valid_from,valid_to,occurred_at,extractor_version,safe_use,acl_scopes,buyer_intent)
-          SELECT x.id,$2,$3,x.external_key,x.artifact_id,x.source,x.visibility,x.kind,x.claim,x.tags,x.product_line,x.segment,
+          claim,quote,tags,product_line,segment,confidence,authority,lifecycle,valid_from,valid_to,occurred_at,extractor_version,safe_use,acl_scopes,buyer_intent)
+          SELECT x.id,$2,$3,x.external_key,x.artifact_id,x.source,x.visibility,x.kind,x.claim,x.quote,x.tags,x.product_line,x.segment,
             x.confidence,x.authority,x.lifecycle,x.valid_from,x.valid_to,x.occurred_at,x.extractor_version,x.safe_use,x.acl_scopes,x.buyer_intent
           FROM jsonb_to_recordset($1::jsonb) AS x(id uuid,external_key text,artifact_id uuid,source text,visibility text,kind text,
-            claim text,tags text[],product_line text,segment text,confidence real,authority real,lifecycle text,valid_from timestamptz,
+            claim text,quote text,tags text[],product_line text,segment text,confidence real,authority real,lifecycle text,valid_from timestamptz,
             valid_to timestamptz,occurred_at timestamptz,extractor_version text,safe_use text,acl_scopes text[],buyer_intent text)`,
         [JSON.stringify(rows), this.tenantId, companyId]);
         await client.query("UPDATE artifacts SET extracted_version=$1 WHERE tenant_id=$2 AND company_id=$3 AND id=ANY($4::uuid[])",
@@ -355,6 +356,137 @@ export class PostgresMetadataStore implements AsyncDisposable {
           embedding=excluded.embedding,input_hash=excluded.input_hash,embedded_at=now()`,
       [JSON.stringify(rows), this.tenantId, provider, model, dimensions]);
     });
+  }
+
+  async evidenceTagsForCompany(companyKey: string): Promise<string[]> {
+    return this.transaction(async client => (await client.query<{ tag: string }>(`SELECT DISTINCT unnest(e.tags) tag
+      FROM evidence e JOIN companies c ON c.id=e.company_id AND c.tenant_id=e.tenant_id
+      JOIN artifacts a ON a.id=e.artifact_id AND a.tenant_id=e.tenant_id
+      WHERE e.tenant_id=$1 AND c.external_key=$2 AND a.is_current AND a.deleted_at IS NULL ORDER BY tag`,
+    [this.tenantId, companyKey])).rows.map(row => row.tag));
+  }
+
+  async evidenceByExternalIds(ids: string[]): Promise<EvidenceRecord[]> {
+    const unique = [...new Set(ids)];
+    if (unique.length === 0) return [];
+    return this.transaction(async client => (await client.query<Record<string, unknown>>(`SELECT e.external_key,e.source,e.visibility,e.kind,
+      e.claim,e.quote,e.tags,e.product_line,e.segment,e.confidence,e.authority,e.lifecycle,e.valid_from,e.valid_to,e.occurred_at,
+      e.extractor_version,e.safe_use,e.acl_scopes,e.buyer_intent,a.local_key artifact_key,c.external_key company_key
+      FROM evidence e JOIN companies c ON c.id=e.company_id AND c.tenant_id=e.tenant_id
+      JOIN artifacts a ON a.id=e.artifact_id AND a.tenant_id=e.tenant_id
+      WHERE e.tenant_id=$1 AND e.external_key=ANY($2::text[]) AND a.is_current AND a.deleted_at IS NULL`,
+    [this.tenantId, unique])).rows.map(row => ({
+      id: String(row.external_key), companyId: String(row.company_key), artifactId: String(row.artifact_key),
+      source: String(row.source) as EvidenceRecord["source"], visibility: String(row.visibility) as EvidenceRecord["visibility"],
+      kind: String(row.kind) as EvidenceRecord["kind"], claim: String(row.claim), quote: String(row.quote ?? ""),
+      tags: row.tags as string[], ...(row.product_line ? { productLine: String(row.product_line) } : {}),
+      ...(row.segment ? { segment: String(row.segment) } : {}), confidence: Number(row.confidence),
+      authority: Number(row.authority), lifecycle: String(row.lifecycle) as NonNullable<EvidenceRecord["lifecycle"]>,
+      ...(row.valid_from ? { validFrom: new Date(String(row.valid_from)).toISOString() } : {}),
+      ...(row.valid_to ? { validTo: new Date(String(row.valid_to)).toISOString() } : {}),
+      occurredAt: new Date(String(row.occurred_at)).toISOString(), extractorVersion: String(row.extractor_version),
+      safeUse: String(row.safe_use) as EvidenceRecord["safeUse"], aclScopes: row.acl_scopes as string[],
+      buyerIntent: String(row.buyer_intent) as NonNullable<EvidenceRecord["buyerIntent"]>,
+    })));
+  }
+
+  async evidenceForCompany(companyKey: string): Promise<EvidenceRecord[]> {
+    const ids = await this.transaction(async client => (await client.query<{ external_key: string }>(`SELECT e.external_key FROM evidence e
+      JOIN companies c ON c.id=e.company_id AND c.tenant_id=e.tenant_id
+      JOIN artifacts a ON a.id=e.artifact_id AND a.tenant_id=e.tenant_id
+      WHERE e.tenant_id=$1 AND c.external_key=$2 AND e.external_key IS NOT NULL
+        AND a.is_current AND a.deleted_at IS NULL
+        AND e.lifecycle NOT IN ('deprecated','superseded')
+        AND (e.valid_from IS NULL OR e.valid_from<=now()) AND (e.valid_to IS NULL OR e.valid_to>now())`,
+    [this.tenantId, companyKey])).rows.map(row => row.external_key));
+    return this.evidenceByExternalIds(ids);
+  }
+
+  async artifactsByLocalKeys(keys: string[]): Promise<SourceArtifact[]> {
+    const unique = [...new Set(keys)];
+    if (unique.length === 0) return [];
+    return this.transaction(async client => (await client.query<Record<string, unknown>>(`SELECT a.local_key,a.source,a.external_id,a.version,
+      a.occurred_at,a.collected_at,a.visibility,a.title,a.url,a.metadata,c.external_key company_key
+      FROM artifacts a JOIN companies c ON c.id=a.company_id AND c.tenant_id=a.tenant_id
+      WHERE a.tenant_id=$1 AND a.local_key=ANY($2::text[]) AND a.is_current AND a.deleted_at IS NULL`,
+    [this.tenantId, unique])).rows.map(row => ({
+      id: String(row.local_key), companyId: String(row.company_key), source: String(row.source) as SourceArtifact["source"],
+      externalId: String(row.external_id), version: String(row.version), occurredAt: new Date(String(row.occurred_at)).toISOString(),
+      collectedAt: new Date(String(row.collected_at)).toISOString(), visibility: String(row.visibility) as SourceArtifact["visibility"],
+      title: String(row.title), content: "", ...(row.url ? { url: String(row.url) } : {}), metadata: row.metadata as Record<string, unknown>,
+    })));
+  }
+
+  async latestPublishedResults(): Promise<RunResult[]> {
+    return this.transaction(async client => (await client.query<{ result: RunResult }>(`SELECT DISTINCT ON (r.company_id) r.result
+      FROM runs r WHERE r.tenant_id=$1 AND r.published AND r.status='complete' AND r.result IS NOT NULL
+      ORDER BY r.company_id,r.completed_at DESC`, [this.tenantId])).rows.map(row => row.result));
+  }
+
+  async latestPublishedResult(companyKey: string): Promise<RunResult | undefined> {
+    return this.transaction(async client => (await client.query<{ result: RunResult }>(`SELECT r.result FROM runs r
+      JOIN companies c ON c.id=r.company_id AND c.tenant_id=r.tenant_id
+      WHERE r.tenant_id=$1 AND c.external_key=$2 AND r.published AND r.status='complete' AND r.result IS NOT NULL
+      ORDER BY r.completed_at DESC LIMIT 1`, [this.tenantId, companyKey])).rows[0]?.result);
+  }
+
+  async traceForRun(runId: string): Promise<TraceEvent[]> {
+    return this.transaction(async client => (await client.query<Record<string, unknown>>(`SELECT t.at,t.stage,t.action,t.subject_id,t.data,
+      c.external_key company_key FROM trace_events t JOIN companies c ON c.id=t.company_id AND c.tenant_id=t.tenant_id
+      WHERE t.tenant_id=$1 AND t.run_id=$2 ORDER BY t.sequence`, [this.tenantId, stableUuid("run", runId)])).rows.map(row => ({
+        runId, companyId: String(row.company_key), at: new Date(String(row.at)).toISOString(), stage: String(row.stage),
+        action: String(row.action), ...(row.subject_id ? { subjectId: String(row.subject_id) } : {}), data: row.data as Record<string, unknown>,
+      })));
+  }
+
+  async getModelCache<T>(key: string): Promise<T | undefined> {
+    return this.transaction(async client => (await client.query<{ value: T }>(
+      "SELECT value FROM model_cache WHERE tenant_id=$1 AND cache_key=$2", [this.tenantId, key])).rows[0]?.value);
+  }
+
+  async setModelCache(key: string, provider: string, operation: string, value: unknown): Promise<void> {
+    await this.transaction(async client => { await client.query(`INSERT INTO model_cache(tenant_id,cache_key,provider,operation,value)
+      VALUES($1,$2,$3,$4,$5::jsonb) ON CONFLICT(tenant_id,cache_key) DO UPDATE SET value=excluded.value,
+      provider=excluded.provider,operation=excluded.operation,created_at=now()`,
+    [this.tenantId, key, provider, operation, JSON.stringify(value)]); });
+  }
+
+  async putSharedObject(key: string, encryptedPayload: Buffer, contentHash: string): Promise<void> {
+    await this.transaction(async client => { await client.query(`INSERT INTO shared_objects(tenant_id,object_key,encrypted_payload,content_hash)
+      VALUES($1,$2,$3,$4) ON CONFLICT(tenant_id,object_key) DO UPDATE SET encrypted_payload=excluded.encrypted_payload,
+      content_hash=excluded.content_hash,updated_at=now()`, [this.tenantId, key, encryptedPayload, contentHash]); });
+  }
+
+  async getSharedObject(key: string): Promise<Buffer> {
+    return this.transaction(async client => {
+      const row = (await client.query<{ encrypted_payload: Buffer }>(
+        "SELECT encrypted_payload FROM shared_objects WHERE tenant_id=$1 AND object_key=$2", [this.tenantId, key])).rows[0];
+      if (!row) throw new Error(`Shared object not found: ${key}`);
+      return row.encrypted_payload;
+    });
+  }
+
+  async deleteSharedObject(key: string): Promise<void> {
+    await this.transaction(async client => { await client.query(
+      "DELETE FROM shared_objects WHERE tenant_id=$1 AND object_key=$2", [this.tenantId, key]); });
+  }
+
+  async recordCanaryReport<T extends { id: string; startedAt: string; completedAt: string; passed: boolean }>(report: T): Promise<void> {
+    await this.transaction(async client => { await client.query(`INSERT INTO canary_reports(
+      tenant_id,report_id,started_at,completed_at,passed,report)
+      VALUES($1,$2,$3,$4,$5,$6::jsonb) ON CONFLICT(tenant_id,report_id) DO UPDATE SET
+      started_at=excluded.started_at,completed_at=excluded.completed_at,passed=excluded.passed,report=excluded.report`,
+    [this.tenantId, report.id, report.startedAt, report.completedAt, report.passed, JSON.stringify(report)]); });
+  }
+
+  async latestCanaryReport<T>(): Promise<T | undefined> {
+    return this.transaction(async client => (await client.query<{ report: T }>(`SELECT report FROM canary_reports
+      WHERE tenant_id=$1 ORDER BY completed_at DESC LIMIT 1`, [this.tenantId])).rows[0]?.report);
+  }
+
+  async canaryReports<T>(limit = 20): Promise<T[]> {
+    return this.transaction(async client => (await client.query<{ report: T }>(`SELECT report FROM canary_reports
+      WHERE tenant_id=$1 ORDER BY completed_at DESC LIMIT $2`, [this.tenantId, limit])).rows.map(row => row.report));
   }
 
   async enqueueJob(job: { id: string; company: CompanyConfig; fixtures: boolean; createdAt: string }): Promise<RunJob> {
@@ -465,6 +597,20 @@ export class PostgresMetadataStore implements AsyncDisposable {
         ORDER BY r.completed_at DESC LIMIT 1`, [this.tenantId, companyKey]);
       return result.rows[0]?.completed_at?.toISOString();
     });
+  }
+
+  async sourceHealth(companyKey: string): Promise<SourceHealth[]> {
+    return this.transaction(async client => (await client.query<Record<string, unknown>>(`SELECT s.source,s.status,s.cursor,
+      s.last_attempt_at,s.last_success_at,s.last_error FROM source_connections s
+      JOIN companies c ON c.id=s.company_id AND c.tenant_id=s.tenant_id
+      WHERE s.tenant_id=$1 AND c.external_key=$2 ORDER BY s.source`, [this.tenantId, companyKey])).rows.map(row => {
+        const cursor = (row.cursor ?? {}) as Record<string, unknown>;
+        return { companyId: companyKey, source: String(row.source) as SourceHealth["source"], status: String(row.status) as SourceHealth["status"],
+          checkedAt: new Date(String(row.last_attempt_at ?? row.last_success_at)).toISOString(),
+          collectedArtifacts: Number(cursor.collectedArtifacts ?? 0), changedArtifacts: Number(cursor.changedArtifacts ?? 0),
+          ...(row.last_success_at ? { lastSuccessAt: new Date(String(row.last_success_at)).toISOString() } : {}),
+          ...(row.last_error ? { error: String(row.last_error) } : {}) };
+      }));
   }
 
   private async transaction<T>(execute: (client: PoolClient) => Promise<T>): Promise<T> {

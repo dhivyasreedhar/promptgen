@@ -16,7 +16,7 @@ import { HostedEvidenceRetriever } from "../retrieval/hosted-retriever.js";
 import { embeddingInputHash, OllamaEmbeddingProvider, OpenAIEmbeddingProvider, type EmbeddingProvider } from "../retrieval/embeddings.js";
 import { EvidenceDatabase } from "../store/database.js";
 import { PostgresMetadataStore } from "../store/postgres-metadata.js";
-import { artifactObjectKey, EncryptedFileObjectStore } from "../store/object-store.js";
+import { artifactObjectKey, EncryptedFileObjectStore, PostgresObjectStore } from "../store/object-store.js";
 import { TraceRecorder } from "../trace.js";
 import type { CompanyConfig, EvidenceNeed, EvidencePack, EvidenceRecord, MissingEvidence, Opportunity, RunResult, ValidatedCandidate } from "../types.js";
 import { hash, isoNow, log, newRunId, stableId, tokenize } from "../util.js";
@@ -51,7 +51,9 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
   const reviewer = createReviewModel(config, model);
   const publicFastPath = !options.fixtures && company.enabledSources.every(source => source === "web" || source === "github");
   const metadata = config.postgresUrl ? new PostgresMetadataStore(config.postgresUrl, config.tenantId, config.tenantName) : undefined;
-  const objectStore = config.objectEncryptionKey ? new EncryptedFileObjectStore(config.objectsDir, config.objectEncryptionKey) : undefined;
+  const objectStore = config.objectEncryptionKey
+    ? metadata ? new PostgresObjectStore(metadata, config.objectEncryptionKey) : new EncryptedFileObjectStore(config.objectsDir, config.objectEncryptionKey)
+    : undefined;
   const controller = new AbortController();
   const relayAbort = () => controller.abort(options.signal?.reason ?? new Error("Run cancelled"));
   options.signal?.addEventListener("abort", relayAbort, { once: true });
@@ -131,7 +133,10 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
       trace.record("extract", "batch-complete", { offset, size: batch.length, extractorVersion: extractor.version, sourceCounts });
     }
 
-    const tags = db.evidenceTagsForCompany(company.id).filter(tag => tag !== "operations");
+    const tags = [...new Set([
+      ...db.evidenceTagsForCompany(company.id),
+      ...(metadata ? await metadata.evidenceTagsForCompany(company.id) : []),
+    ])].filter(tag => tag !== "operations");
     if (metadata) {
       const localEvidence = db.evidenceForCompany(company.id);
       const hostedCounts = await metadata.contextCounts(company.id);
@@ -174,7 +179,9 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
     let opportunities: Opportunity[];
     let relevantEvidenceIds: string[];
     if (publicFastPath) {
-      const publicEvidence = db.evidenceForCompany(company.id).filter(record => record.visibility === "public" && isEvidenceEligible(record));
+      const hostedEvidence = metadata ? await metadata.evidenceForCompany(company.id) : [];
+      const publicEvidence = uniqueEvidence([...hostedEvidence, ...db.evidenceForCompany(company.id)])
+        .filter(record => record.visibility === "public" && isEvidenceEligible(record));
       opportunities = publicOpportunities(company, publicEvidence);
       packs = broadPacks;
       relevantEvidenceIds = [...new Set(opportunities.flatMap(item => item.evidenceIds))];
@@ -183,7 +190,7 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
         skipped: ["model-topic-planning", "embedding-backfill", "candidate-retrieval"] });
     } else {
       tracePrivacy(trace, broadEvidence, "topic-planning");
-      const modelTopics = await cachedModelCall(db, trace, model.name, "plan-topics", { company, broadEvidence }, () => model.planTopics(company, broadEvidence, controller.signal));
+      const modelTopics = await cachedModelCall(db, metadata, trace, model.name, "plan-topics", { company, broadEvidence }, () => model.planTopics(company, broadEvidence, controller.signal));
       const topics = dedupeTopics([...modelTopics, ...tags.map(slug => ({ slug, query: slug.replaceAll("-", " ") }))]);
       trace.record("retrieve", "topic-plan-created", { provider: model.name, broadEvidenceIds: broadEvidence.map(item => item.id), topics });
       const needs = planEvidenceNeeds(company, topics);
@@ -205,7 +212,8 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
     metrics.opportunities = opportunities.length;
     for (const opportunity of opportunities) trace.record("opportunity", "discovered", opportunity as unknown as Record<string, unknown>, opportunity.id);
 
-    const evidenceById = new Map(db.evidenceByIds(relevantEvidenceIds).map(record => [record.id, record]));
+    const sharedEvidence = metadata ? await metadata.evidenceByExternalIds(relevantEvidenceIds) : [];
+    const evidenceById = new Map([...sharedEvidence, ...db.evidenceByIds(relevantEvidenceIds)].map(record => [record.id, record]));
     tracePrivacy(trace, [...evidenceById.values()], "candidate-generation");
     // The model supplies natural phrasing while a conservative, evidence-derived
     // scaffold guarantees coverage of every opportunity. This is faster and more
@@ -217,7 +225,7 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
     const generationOptions = publicFastPath ? { minCandidates: expanded ? 24 : 16, maxCandidates: expanded ? 24 : 16 }
       : { minCandidates: expanded ? 32 : 24, maxCandidates: expanded ? 32 : 24 };
     const generationVersion = `${publicFastPath ? "generate-v7-public-diverse-pages" : "generate-v7-connected-diverse-pool"}-${expanded ? "expanded" : "standard"}`;
-    const generatedOutput = await cachedModelCall(db, trace, model.name, generationVersion,
+    const generatedOutput = await cachedModelCall(db, metadata, trace, model.name, generationVersion,
       { company, opportunities, generationOptions, evidence: opportunities.flatMap(item => item.evidenceIds.map(id => evidenceById.get(id))) },
       () => model.generate(company, opportunities, evidenceById, controller.signal, generationOptions));
     // Old cache entries predate generationMethod; normalize at the cache boundary.
@@ -261,7 +269,7 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
     const deterministic = validateCandidates(company, eligibleCandidates, opportunities, evidenceById);
     const reviewable = deterministic.filter(item => item.accepted);
     tracePrivacy(trace, reviewable.flatMap(item => item.evidenceIds.map(id => evidenceById.get(id))).filter((item): item is EvidenceRecord => Boolean(item)), "candidate-review");
-    const modelReviews = await cachedModelCall(db, trace, reviewer.name, `review-v6-complete-atomic-claims-${expanded ? "expanded" : "standard"}`, { company, candidates: reviewable, evidence: reviewable.flatMap(item => item.evidenceIds.map(id => evidenceById.get(id))) }, () => reviewer.review(company, reviewable, evidenceById, controller.signal));
+    const modelReviews = await cachedModelCall(db, metadata, trace, reviewer.name, `review-v6-complete-atomic-claims-${expanded ? "expanded" : "standard"}`, { company, candidates: reviewable, evidence: reviewable.flatMap(item => item.evidenceIds.map(id => evidenceById.get(id))) }, () => reviewer.review(company, reviewable, evidenceById, controller.signal));
     const reviewById = new Map(modelReviews.map(review => [review.candidateId, review]));
     const validated = attachPromptContext(applyModelReviews(deterministic, reviewById, evidenceById), opportunities, evidenceById);
     const [guidance, existingBenchmarks] = metadata ? await Promise.all([
@@ -540,6 +548,7 @@ function tracePrivacy(trace: TraceRecorder, records: EvidenceRecord[], purpose: 
 
 async function cachedModelCall<T>(
   db: EvidenceDatabase,
+  metadata: PostgresMetadataStore | undefined,
   trace: TraceRecorder,
   provider: string,
   operation: string,
@@ -547,7 +556,7 @@ async function cachedModelCall<T>(
   execute: () => Promise<T>,
 ): Promise<T> {
   const key = hash(JSON.stringify({ contractVersion: "prompt-pipeline-v7", provider, operation, input }));
-  const cached = db.getModelCache<T>(key);
+  const cached = metadata ? await metadata.getModelCache<T>(key) : db.getModelCache<T>(key);
   if (cached !== undefined) {
     trace.record("model", "cache-hit", { provider, operation, key, durationMs: 0 });
     return cached;
@@ -555,6 +564,7 @@ async function cachedModelCall<T>(
   const started = performance.now();
   const value = await execute();
   db.setModelCache(key, provider, operation, value);
+  await metadata?.setModelCache(key, provider, operation, value);
   trace.record("model", "cache-write", { provider, operation, key, durationMs: Math.round(performance.now() - started) });
   return value;
 }

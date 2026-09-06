@@ -9,7 +9,7 @@ import { reassessStagedCanaries, runDailyCanaries } from "./quality/canary.js";
 import { evaluateReleaseGate } from "./quality/release-gate.js";
 import { safeEmbeddingText } from "./privacy/transform.js";
 import { scheduler } from "./scheduler.js";
-import { serve } from "./server.js";
+import { serve, work } from "./server.js";
 import { migratePostgres, postgresHealth } from "./store/postgres-admin.js";
 
 try {
@@ -88,6 +88,9 @@ switch (command) {
   case "serve":
     await serve(config, fixtures);
     break;
+  case "worker":
+    await work(config);
+    break;
   case "postgres-migrate": {
     if (!config.postgresUrl) throw new Error("DATABASE_URL is not configured");
     process.stdout.write(`${JSON.stringify(await migratePostgres(config.postgresUrl, config.rootDir), null, 2)}\n`);
@@ -142,6 +145,6 @@ switch (command) {
     break;
   }
   default:
-    process.stdout.write(["Manicule Promptgen V2", "", "Commands:", "  run <company> [--fixtures]", "  run-all [--fixtures]", "  scheduler [--fixtures]", "  canary [--fixtures]", "  canary-reassess", "  serve [--fixtures]", "  eval (safety regression + human quality report)", "  eval-prepare", "  eval-human", "  eval-gate", "  eval-judge", "  eval-judge-report", "  eval-rerank", "  eval-release-gate", "  postgres-migrate", "  postgres-health", "  postgres-search <company-id> <query>", "  postgres-embed <company-id> [limit]", ""].join("\n"));
+    process.stdout.write(["Manicule Promptgen V2", "", "Commands:", "  run <company> [--fixtures]", "  run-all [--fixtures]", "  scheduler [--fixtures]", "  canary [--fixtures]", "  canary-reassess", "  serve [--fixtures]", "  worker", "  eval (safety regression + human quality report)", "  eval-prepare", "  eval-human", "  eval-gate", "  eval-judge", "  eval-judge-report", "  eval-rerank", "  eval-release-gate", "  postgres-migrate", "  postgres-health", "  postgres-search <company-id> <query>", "  postgres-embed <company-id> [limit]", ""].join("\n"));
     if (command !== "help") process.exitCode = 1;
 }

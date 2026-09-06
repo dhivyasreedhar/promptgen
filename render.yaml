@@ -1,3 +1,29 @@
+envVarGroups:
+  - name: promptgen-shared
+    envVars:
+      - key: PROMPTGEN_DB_PATH
+        value: /tmp/promptgen.db
+      - key: PROMPTGEN_RUNS_DIR
+        value: /tmp/runs
+      - key: PROMPTGEN_OBJECTS_DIR
+        value: /tmp/objects
+      - key: PROMPTGEN_FIXTURE_SCALE
+        value: 1
+      - key: PROMPTGEN_PUBLIC_WEB
+        value: true
+      - key: PROMPTGEN_MODEL_PROVIDER
+        value: anthropic
+      - key: ANTHROPIC_MODEL
+        value: claude-sonnet-4-6
+      - key: PROMPTGEN_EMBEDDING_PROVIDER
+        value: openai
+      - key: PROMPTGEN_TENANT_NAME
+        value: Manicule promptgen demo
+      - key: OPENAI_JUDGE_MODEL
+        value: gpt-4.1-mini
+      - key: PROMPTGEN_OBJECT_ENCRYPTION_KEY
+        generateValue: true
+
 services:
   - type: web
     name: manicule-promptgen-demo
@@ -6,46 +32,56 @@ services:
     healthCheckPath: /healthz
     autoDeploy: true
     preDeployCommand: node dist/src/cli.js postgres-migrate && node dist/src/cli.js eval-release-gate
-    disk:
-      name: promptgen-data
-      mountPath: /app/persist
-      sizeGB: 1
     envVars:
-      - key: PROMPTGEN_HOST
-        value: 0.0.0.0
-      - key: PROMPTGEN_DB_PATH
-        value: /app/persist/promptgen.db
-      - key: PROMPTGEN_RUNS_DIR
-        value: /app/persist/runs
-      - key: PROMPTGEN_OBJECTS_DIR
-        value: /app/persist/objects
-      - key: PROMPTGEN_FIXTURE_SCALE
-        value: 1
-      - key: PROMPTGEN_PUBLIC_WEB
-        value: true
-      - key: PROMPTGEN_ALLOW_PUBLIC_ACCESS
-        value: true
-      - key: PROMPTGEN_MODEL_PROVIDER
-        value: anthropic
-      - key: PROMPTGEN_JOB_CONCURRENCY
-        value: 1
-      - key: ANTHROPIC_MODEL
-        value: claude-sonnet-4-6
-      - key: PROMPTGEN_EMBEDDING_PROVIDER
-        value: openai
-      - key: PROMPTGEN_SCHEDULER_ENABLED
-        value: true
-      - key: PROMPTGEN_DAILY_AT
-        value: "02:00"
-      - key: PROMPTGEN_TIMEZONE
-        value: America/Los_Angeles
-      - key: PROMPTGEN_TENANT_NAME
-        value: Manicule promptgen demo
+      - fromGroup: promptgen-shared
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: OPENAI_API_KEY
         sync: false
-      - key: OPENAI_JUDGE_MODEL
-        value: gpt-4.1-mini
+      - key: DATABASE_URL
+        sync: false
+      - key: PROMPTGEN_HOST
+        value: 0.0.0.0
+      - key: PROMPTGEN_ALLOW_PUBLIC_ACCESS
+        value: true
+      - key: PROMPTGEN_INLINE_WORKER
+        value: false
+      - key: PROMPTGEN_SCHEDULER_ENABLED
+        value: false
+
+  - type: worker
+    name: manicule-promptgen-worker
+    runtime: docker
+    plan: starter
+    numInstances: 2
+    autoDeploy: true
+    preDeployCommand: node dist/src/cli.js postgres-migrate
+    dockerCommand: sh -c 'node dist/scripts/generate-fixtures.js && node dist/src/cli.js worker'
+    envVars:
+      - fromGroup: promptgen-shared
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: PROMPTGEN_INLINE_WORKER
+        value: false
+      - key: PROMPTGEN_SCHEDULER_ENABLED
+        value: false
+
+  - type: cron
+    name: manicule-promptgen-daily-canary
+    runtime: docker
+    plan: starter
+    schedule: "0 10 * * *"
+    preDeployCommand: node dist/src/cli.js postgres-migrate
+    dockerCommand: sh -c 'node dist/scripts/generate-fixtures.js && node dist/src/cli.js canary --fixtures'
+    envVars:
+      - fromGroup: promptgen-shared
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
       - key: DATABASE_URL
         sync: false

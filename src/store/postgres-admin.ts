@@ -7,6 +7,7 @@ import { PostgresMetadataStore } from "./postgres-metadata.js";
 export async function migratePostgres(connectionString: string, rootDir: string): Promise<Array<{ migration: string; status: "applied" | "current" | "baselined" }>> {
   const pool = new Pool({ connectionString, max: 1, connectionTimeoutMillis: 10_000 });
   try {
+    await pool.query("SELECT pg_advisory_lock(hashtext('promptgen_schema_migrations'))");
     await pool.query(`CREATE TABLE IF NOT EXISTS promptgen_schema_migrations(
       migration text PRIMARY KEY, checksum text NOT NULL, applied_at timestamptz NOT NULL DEFAULT now())`);
     const directory = path.join(rootDir, "infra/postgres");
@@ -41,7 +42,10 @@ export async function migratePostgres(connectionString: string, rootDir: string)
       statuses.push({ migration, status: "applied" });
     }
     return statuses;
-  } finally { await pool.end(); }
+  } finally {
+    await pool.query("SELECT pg_advisory_unlock(hashtext('promptgen_schema_migrations'))").catch(() => undefined);
+    await pool.end();
+  }
 }
 
 export async function postgresHealth(connectionString: string, tenantId: string, tenantName: string): Promise<Awaited<ReturnType<PostgresMetadataStore["health"]>>> {

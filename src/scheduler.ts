@@ -27,7 +27,9 @@ export async function runDueCompanies(config: AppConfig, fixtures: boolean, owne
   }, 60 * 60_000);
   renewal.unref();
   try {
-    const lastCanary = db.latestCanaryReport<{ completedAt: string; state?: string }>();
+    const lastCanary = hosted
+      ? await hosted.latestCanaryReport<{ completedAt: string; state?: string }>()
+      : db.latestCanaryReport<{ completedAt: string; state?: string }>();
     const due = !lastCanary || lastCanary.state !== "completed" || now.getTime() - Date.parse(lastCanary.completedAt) >= 20 * 60 * 60_000;
     if (due) await runDailyCanaries(config, fixtures);
   } finally {
