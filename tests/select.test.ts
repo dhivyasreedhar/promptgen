@@ -138,6 +138,12 @@ describe("selectPrompts", () => {
     expect(selectPrompts([multiRepository, monorepo], 2).discovery).toHaveLength(1);
   });
 
+  it("collapses equivalent metrics and insights formulations", () => {
+    const core = { ...candidate(0), text: "Which incident platforms offer advanced metrics and insights as part of their core workflow?", semanticKey: "incident-metrics-insights" };
+    const enterprise = { ...candidate(1), text: "Which incident platforms include metrics and insights features at the enterprise tier?", semanticKey: "enterprise-metrics-insights" };
+    expect(selectPrompts([core, enterprise], 2).discovery).toHaveLength(1);
+  });
+
   it("caps peripheral compliance, pricing, and setup prompts when core workflows are available", () => {
     const core = Array.from({ length: 8 }, (_, index) => candidate(index));
     const peripheral = [

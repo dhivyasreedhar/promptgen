@@ -148,6 +148,7 @@ const CONCEPTS = [
   [/\b(?:large|huge|massive)\b.{0,120}\b(?:repo|repos|repository|repositories|monorepo|monorepos)\b/i],
   [/\b(?:postmortems?|post-mortems?|retrospectives?)\b/i, /\b(?:summary|summaries|summarize|generate|write|draft)\b/i],
   [/\bpagerduty\b/i, /\b(?:alternative|alternatives|migrate|migration|replace|replacing|switch|switching|away)\b/i],
+  [/\bmetrics?\b/i, /\binsights?\b/i],
   // Different generations often describe the same end-to-end agent-run
   // debugging situation with "execution", "session", or "run". Keep a
   // distinct tool-call/cost prompt, but do not spend two tracking slots on

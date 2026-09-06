@@ -9,6 +9,7 @@ const SOLUTION_CUE = /\b(tools?|platforms?|software|solutions?|services?|vendors
 const INFORMATIONAL_FRAMING = /^(?:how important is|why is|what is the importance of|what are the benefits of)\b/i;
 const QUERY_FRAGMENT_FRAMING = /\bbest for (?:vs\b|[^?]{0,80}\b(?:platform|product|vendor|tool) comparison\b)/i;
 const CUSTOMER_LIST_FRAGMENT = /\bshould buyers evaluate for customers?\b/i;
+const ADJACENT_TAXONOMY_LABELS = /\bfor (?:retrospectives? postmortems?|postmortems? retrospectives?)\b/i;
 
 export function validateCandidates(
   company: CompanyConfig,
@@ -40,6 +41,7 @@ export function validateCandidates(
     }
     if (QUERY_FRAGMENT_FRAMING.test(text)) findings.push(fatal("unnatural-query-fragment", "Prompt exposes an internal topic or comparison label instead of a natural buyer question."));
     if (CUSTOMER_LIST_FRAGMENT.test(text)) findings.push(fatal("customer-list-fragment", "Prompt exposes a customer-list retrieval label instead of a buying situation."));
+    if (ADJACENT_TAXONOMY_LABELS.test(text)) findings.push(fatal("unnatural-query-fragment", "Prompt joins internal taxonomy labels instead of using natural buyer language."));
     if (!validPublicInference && !records.some(isBuyingSignal)) {
       findings.push(fatal("missing-buying-demand", "Demand evidence is support, implementation, retention, or operational noise rather than buying intent."));
     }
