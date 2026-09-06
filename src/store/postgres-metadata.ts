@@ -369,16 +369,17 @@ export class PostgresMetadataStore implements AsyncDisposable {
     });
   }
 
-  async claimJob(owner: string, now: Date, leaseMs: number): Promise<RunJob | undefined> {
+  async claimJob(owner: string, now: Date, leaseMs: number, publicOnly = false): Promise<RunJob | undefined> {
     return this.transaction(async client => {
       const leaseExpiresAt = new Date(now.getTime() + leaseMs).toISOString();
       const result = await client.query(`WITH candidate AS (
           SELECT id FROM run_jobs WHERE tenant_id=$1 AND (
             (status='queued' AND available_at <= $2) OR (status='running' AND lease_expires_at < $2)
-          ) ORDER BY CASE WHEN payload->>'fixtures'='false' THEN 0 ELSE 1 END, created_at FOR UPDATE SKIP LOCKED LIMIT 1
+          ) AND ($5::boolean=false OR payload->>'fixtures'='false')
+          ORDER BY CASE WHEN payload->>'fixtures'='false' THEN 0 ELSE 1 END, created_at FOR UPDATE SKIP LOCKED LIMIT 1
         ) UPDATE run_jobs j SET status='running',started_at=coalesce(j.started_at,$2),lease_owner=$3,
           lease_expires_at=$4,attempts=j.attempts+1 FROM candidate WHERE j.id=candidate.id RETURNING j.*`,
-      [this.tenantId, now.toISOString(), owner, leaseExpiresAt]);
+      [this.tenantId, now.toISOString(), owner, leaseExpiresAt, publicOnly]);
       return result.rows[0] ? rowToJob(result.rows[0] as Record<string, unknown>) : undefined;
     });
   }

@@ -129,7 +129,7 @@ Semantic retrieval uses the open-source `nomic-embed-text` model through local O
 
 When `DATABASE_URL` is configured, every pipeline run synchronously records its tenant-scoped company, run result, provider, connector health/cursors, and complete trace in Postgres. UI jobs use atomic `FOR UPDATE SKIP LOCKED` claims, renewable leases, cancellation, bounded exponential retry, and one-active-job-per-company enforcement. Daily scheduler locks are also shared in PostgreSQL. A configured metadata write is part of run completion rather than a fire-and-forget side effect. Stable local identifiers are mapped to deterministic UUIDs for the hosted schema.
 
-The hosted worker pool defaults to two concurrent jobs. Each slot pulls independently, so a short job does not wait for the slowest job in a fixed batch; public-only jobs are prioritized ahead of fixture-heavy demo runs. Set `PROMPTGEN_JOB_CONCURRENCY=1` on memory-constrained deployments or increase it up to four after load testing.
+The hosted worker pool defaults to two concurrent jobs. Each slot pulls independently, so a short job does not wait for the slowest job in a fixed batch. One slot is reserved for interactive public-only jobs and the other drains all work, preventing a domain entered in the UI from sitting behind fixture-heavy demo or scheduled runs. Set `PROMPTGEN_JOB_CONCURRENCY=1` on memory-constrained deployments or increase it up to four after load testing.
 
 For Supabase, use the session-pooler URL when the runtime has no IPv6 route. `PGHOST`, `PGUSER`, `PGPORT`, `PGDATABASE`, and optionally `PGPASSWORD` override the corresponding URL components without logging the resolved secret. Set a distinct `PROMPTGEN_TENANT_ID` for each isolated customer tenant.
 

@@ -350,10 +350,11 @@ export class EvidenceDatabase implements Disposable {
     return this.jobById(job.id)!;
   }
 
-  claimJob(owner: string, now: Date, leaseMs: number): RunJob | undefined {
+  claimJob(owner: string, now: Date, leaseMs: number, publicOnly = false): RunJob | undefined {
     const claim = this.db.transaction(() => {
       const iso = now.toISOString();
-      const row = this.db.prepare("SELECT id FROM run_jobs WHERE (status='queued' AND (available_at IS NULL OR available_at <= ?)) OR (status='running' AND lease_expires_at < ?) ORDER BY fixtures ASC, created_at LIMIT 1")
+      const publicFilter = publicOnly ? " AND fixtures=0" : "";
+      const row = this.db.prepare(`SELECT id FROM run_jobs WHERE (((status='queued' AND (available_at IS NULL OR available_at <= ?)) OR (status='running' AND lease_expires_at < ?))${publicFilter}) ORDER BY fixtures ASC, created_at LIMIT 1`)
         .get(iso, iso) as { id: string } | undefined;
       if (!row) return undefined;
       this.db.prepare("UPDATE run_jobs SET status='running',started_at=COALESCE(started_at,?),lease_owner=?,lease_expires_at=?,attempts=attempts+1 WHERE id=?")

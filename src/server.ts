@@ -13,7 +13,8 @@ import { redactedEvidenceExcerptForUi, safePreviewForUi } from "./privacy/transf
 import { composeTrackingSet } from "./prompts/tracking-set.js";
 import { isScheduledMinute, runDueCompanies } from "./scheduler.js";
 
-let activeWorkers = 0;
+let activeGeneralWorkers = 0;
+let publicWorkerActive = false;
 let scheduling = false;
 
 export async function serve(config: AppConfig, fixtures: boolean): Promise<void> {
@@ -60,7 +61,7 @@ export async function serve(config: AppConfig, fixtures: boolean): Promise<void>
   const shutdown = async () => {
     if (shuttingDown) return; shuttingDown = true; clearInterval(queueTick); if (schedulerTick) clearInterval(schedulerTick);
     await new Promise<void>(resolve => server.close(() => resolve()));
-    while (activeWorkers > 0) await new Promise(resolve => setTimeout(resolve, 100));
+    while (activeGeneralWorkers > 0 || publicWorkerActive) await new Promise(resolve => setTimeout(resolve, 100));
     await hosted?.close();
   };
   process.once("SIGINT", () => void shutdown());
@@ -228,30 +229,34 @@ async function route(config: AppConfig, fixtures: boolean, hosted: PostgresMetad
 }
 
 async function processJobs(config: AppConfig, hosted?: PostgresMetadataStore): Promise<void> {
-  const availableSlots = Math.max(0, config.jobConcurrency - activeWorkers);
-  if (availableSlots === 0) return;
-  // Maintain independent worker loops instead of processing fixed batches.
-  // A newly queued job can now occupy an idle slot while another long run is
-  // active, and a fast job no longer waits for the slowest peer in its batch.
-  await Promise.all(Array.from({ length: availableSlots }, () => workerLoop(config, hosted)));
+  const workers: Promise<void>[] = [];
+  // Reserve one slot for interactive public-domain work. It exits immediately
+  // when no public job exists and the five-second queue tick recreates it, so a
+  // visitor never sits behind a chain of fixture-heavy scheduled/demo runs.
+  if (config.jobConcurrency > 1 && !publicWorkerActive && activeGeneralWorkers < config.jobConcurrency) {
+    publicWorkerActive = true;
+    workers.push(workerLoop(config, hosted, true).finally(() => { publicWorkerActive = false; }));
+  }
+  const reservedPublicSlot = publicWorkerActive ? 1 : 0;
+  const availableGeneralSlots = Math.max(0, config.jobConcurrency - reservedPublicSlot - activeGeneralWorkers);
+  for (let index = 0; index < availableGeneralSlots; index += 1) {
+    activeGeneralWorkers += 1;
+    workers.push(workerLoop(config, hosted, false).finally(() => { activeGeneralWorkers -= 1; }));
+  }
+  await Promise.all(workers);
 }
 
-async function workerLoop(config: AppConfig, hosted?: PostgresMetadataStore): Promise<void> {
-  activeWorkers += 1;
-  try {
-    for (;;) {
-      const owner = `${process.pid}:${randomUUID()}`;
-      using db = new EvidenceDatabase(config.dbPath);
-      const job = hosted ? await hosted.claimJob(owner, new Date(), 120_000) : db.claimJob(owner, new Date(), 120_000);
-      if (!job) break;
-      try {
-        await processClaimedJob(config, hosted, job, owner);
-      } catch (error) {
-        log("error", "job.execution-failed", { jobId: job.id, error: errorMessage(error), recovery: "lease-retry" });
-      }
+async function workerLoop(config: AppConfig, hosted: PostgresMetadataStore | undefined, publicOnly: boolean): Promise<void> {
+  for (;;) {
+    const owner = `${process.pid}:${randomUUID()}`;
+    using db = new EvidenceDatabase(config.dbPath);
+    const job = hosted ? await hosted.claimJob(owner, new Date(), 120_000, publicOnly) : db.claimJob(owner, new Date(), 120_000, publicOnly);
+    if (!job) break;
+    try {
+      await processClaimedJob(config, hosted, job, owner);
+    } catch (error) {
+      log("error", "job.execution-failed", { jobId: job.id, error: errorMessage(error), recovery: "lease-retry" });
     }
-  } finally {
-    activeWorkers -= 1;
   }
 }
 

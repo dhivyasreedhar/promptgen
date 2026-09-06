@@ -53,6 +53,7 @@ describe("EvidenceDatabase", () => {
     const publicCompany = { ...privateCompany, id: "public", name: "Public", domain: "public.test" };
     db.enqueueJob({ id: "private-job", company: privateCompany, fixtures: true, createdAt: "2026-09-04T00:00:00.000Z" });
     db.enqueueJob({ id: "public-job", company: publicCompany, fixtures: false, createdAt: "2026-09-04T00:01:00.000Z" });
-    expect(db.claimJob("worker", new Date("2026-09-04T00:02:00.000Z"), 60_000)?.id).toBe("public-job");
+    expect(db.claimJob("public-worker", new Date("2026-09-04T00:02:00.000Z"), 60_000, true)?.id).toBe("public-job");
+    expect(db.claimJob("general-worker", new Date("2026-09-04T00:02:00.000Z"), 60_000)?.id).toBe("private-job");
   });
 });
