@@ -6,9 +6,10 @@ export interface SelectionResult {
   boundaries: TrackingPrompt[];
 }
 
-export function selectPrompts(candidates: ValidatedCandidate[], target = 10, preferredIds = new Set<string>(), benchmarkIds = new Set<string>()): SelectionResult {
+export function selectPrompts(candidates: ValidatedCandidate[], target = 10, preferredIds = new Set<string>(), benchmarkIds = new Set<string>(), existingBenchmarks: TrackingPrompt[] = []): SelectionResult {
   const boundaries = candidates.filter(item => item.accepted && item.archetype === "boundary").sort((a, b) => b.score - a.score).slice(0, 5).map(item => toPrompt(item, benchmarkIds));
-  const pool = candidates.filter(item => item.accepted && item.archetype !== "boundary");
+  const pool = candidates.filter(item => item.accepted && item.archetype !== "boundary" &&
+    !existingBenchmarks.some(benchmark => conflictsWithTrackingPrompt(item, benchmark)));
   const selected: ValidatedCandidate[] = [];
   const usedOpportunities = new Set<string>();
   const opportunityCounts = new Map<string, number>();
@@ -99,7 +100,7 @@ function coverageNovelty(candidate: ValidatedCandidate, selected: ValidatedCandi
 }
 
 const COMMON = new Set(["what", "which", "best", "tools", "tool", "platform", "platforms", "team", "teams", "using", "with", "for", "that", "this", "code", "review", "management", "document", "memory", "incident", "artificial", "intelligence"]);
-const SEMANTIC_GENERIC = new Set(["supports", "support", "engineering", "organization", "organizations", "our", "need", "needs", "looking", "known", "any", "option", "options", "solution", "solutions", "recommendation"]);
+const SEMANTIC_GENERIC = new Set(["supports", "support", "engineering", "organization", "organizations", "our", "need", "needs", "looking", "known", "any", "option", "options", "solution", "solutions", "recommendation", "are", "the", "in", "addition"]);
 
 function conflicts(left: ValidatedCandidate, right: ValidatedCandidate): boolean {
   const evidenceOverlap = setJaccard(left.evidenceIds, right.evidenceIds);
@@ -141,10 +142,12 @@ function hardConflict(left: ValidatedCandidate, right: ValidatedCandidate): bool
 const NAMED_FACETS = ["gitlab", "github", "jira", "slack", "pagerduty", "soc 2", "hipaa", "gdpr", "fedramp", "aws marketplace", "wizard"];
 const CONCEPTS = [
   [/\b(?:ai|artificial intelligence)\b/i, /\bautomat(?:e|es|ed|ing|ion)\b/i],
-  [/\bpostmortem|retrospective\b/i, /\baudit|timeline\b/i],
+  [/\b(?:postmortems?|post-mortems?|retrospectives?)\b/i, /\b(?:audit|timeline)\b/i],
   [/\bteamwork\b.{0,80}\bgraph\b|\bgraph\b.{0,80}\bteamwork\b/i],
   [/\bproduct discovery\b/i],
   [/\b(?:large|huge|massive)\b.{0,60}\b(?:repo|repos|repository|repositories|monorepo|monorepos)\b/i],
+  [/\b(?:postmortems?|post-mortems?|retrospectives?)\b/i, /\b(?:summary|summaries|summarize|generate|write|draft)\b/i],
+  [/\bpagerduty\b/i, /\b(?:alternative|alternatives|migrate|migration|replace|replacing|switch|switching|away)\b/i],
   // Different generations often describe the same end-to-end agent-run
   // debugging situation with "execution", "session", or "run". Keep a
   // distinct tool-call/cost prompt, but do not spend two tracking slots on
@@ -155,6 +158,16 @@ const CONCEPTS = [
   // question can still survive because it lacks the endpoint span below.
   [/\b(?:full[- ]stack|front[- ]?end|browser)\b/i, /\b(?:database|api call|api calls)\b/i, /\btrac(?:e|es|ed|ing)\b/i],
 ];
+
+function conflictsWithTrackingPrompt(candidate: ValidatedCandidate, prompt: TrackingPrompt): boolean {
+  const candidateText = candidate.text.toLowerCase();
+  const promptText = prompt.text.toLowerCase();
+  const sharedNamedFacet = NAMED_FACETS.some(facet => candidateText.includes(facet) && promptText.includes(facet));
+  const distinctiveOverlap = setJaccard(semanticTokens(candidate.text), semanticTokens(prompt.text));
+  const keyOverlap = candidate.semanticKey && prompt.semanticKey ? setJaccard(keyTokens(candidate.semanticKey), keyTokens(prompt.semanticKey)) : 0;
+  const sharedConcept = CONCEPTS.some(patterns => patterns.every(pattern => pattern.test(candidate.text)) && patterns.every(pattern => pattern.test(prompt.text)));
+  return jaccard(candidate.text, prompt.text) >= 0.65 || sharedConcept || keyOverlap >= 0.3 || (sharedNamedFacet && distinctiveOverlap >= 0.3);
+}
 
 const KEY_SYNONYMS: Record<string, string> = {
   search: "retrieval", realtime: "interactive", response: "interactive", speed: "latency", fast: "latency", reducing: "reduce",

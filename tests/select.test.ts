@@ -113,6 +113,25 @@ describe("selectPrompts", () => {
     expect(selectPrompts([candidate(0)], 1, new Set(), new Set(["c0"])).discovery[0]?.set).toBe("benchmark");
   });
 
+  it("does not select a discovery prompt that duplicates an existing benchmark", () => {
+    const gitlab = { ...candidate(0), text: "What AI code review platforms support GitLab in addition to GitHub?", semanticKey: "gitlab-integration" };
+    const other = { ...candidate(1), text: "Which AI code review tools let teams enforce custom review rules?", semanticKey: "custom-review-rules" };
+    const benchmark = {
+      id: "benchmark-gitlab", text: "What are the best AI code review tools for teams using GitLab?", archetype: "category" as const,
+      opportunityId: "benchmark", evidenceIds: [], score: 1, semanticKey: "legacy-gitlab-key", origin: "customer-authored" as const,
+      set: "benchmark" as const, coverage: { audience: "engineering teams", useCase: "gitlab", constraint: "none stated", decisionStage: "evaluation" as const },
+    };
+    expect(selectPrompts([gitlab, other], 2, new Set(), new Set(), [benchmark]).discovery.map(prompt => prompt.id)).toEqual(["c1"]);
+  });
+
+  it("collapses equivalent postmortem and PagerDuty switching intents", () => {
+    const retrospective = { ...candidate(0), text: "What tools help teams run retrospectives with AI-assisted incident summaries?", semanticKey: "ai-retrospective-summaries" };
+    const postmortem = { ...candidate(1), text: "Which incident platforms use AI to automatically generate postmortems or incident summaries?", semanticKey: "ai-generated-postmortems" };
+    const migration = { ...candidate(2), text: "Which incident platforms make it easiest to migrate away from PagerDuty?", semanticKey: "pagerduty-migration" };
+    const alternatives = { ...candidate(3), text: "What incident platforms should teams consider as PagerDuty alternatives?", semanticKey: "pagerduty-alternatives" };
+    expect(selectPrompts([retrospective, postmortem, migration, alternatives], 4).discovery).toHaveLength(2);
+  });
+
   it("caps peripheral compliance, pricing, and setup prompts when core workflows are available", () => {
     const core = Array.from({ length: 8 }, (_, index) => candidate(index));
     const peripheral = [

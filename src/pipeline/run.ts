@@ -264,12 +264,15 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
     const modelReviews = await cachedModelCall(db, trace, reviewer.name, `review-v6-complete-atomic-claims-${expanded ? "expanded" : "standard"}`, { company, candidates: reviewable, evidence: reviewable.flatMap(item => item.evidenceIds.map(id => evidenceById.get(id))) }, () => reviewer.review(company, reviewable, evidenceById, controller.signal));
     const reviewById = new Map(modelReviews.map(review => [review.candidateId, review]));
     const validated = attachPromptContext(applyModelReviews(deterministic, reviewById, evidenceById), opportunities, evidenceById);
-    const guidance = metadata ? await metadata.promptGuidance(company.id) : { rejected: [], preferred: [], benchmark: [], rules: [] };
+    const [guidance, existingBenchmarks] = metadata ? await Promise.all([
+      metadata.promptGuidance(company.id), metadata.benchmarkPrompts(company.id),
+    ]) : [{ rejected: [], preferred: [], benchmark: [], rules: [] }, []];
     const guided = applyPromptGuidance(validated, new Set(guidance.rejected), guidance.rules);
     const preferredPromptIds = new Set(guidance.preferred);
-    trace.record("feedback", "guidance-applied", { rejectedPromptIds: guidance.rejected, preferredPromptIds: guidance.preferred });
+    trace.record("feedback", "guidance-applied", { rejectedPromptIds: guidance.rejected, preferredPromptIds: guidance.preferred,
+      benchmarkPromptIds: existingBenchmarks.map(prompt => prompt.id) });
     trace.record("review", "model-critique-complete", { provider: reviewer.name, requested: reviewable.length, returned: modelReviews.length, accepted: guided.filter(item => item.accepted).length });
-    const selection = selectPrompts(guided, 10, preferredPromptIds, new Set(guidance.benchmark));
+    const selection = selectPrompts(guided, 10, preferredPromptIds, new Set(guidance.benchmark), existingBenchmarks);
     if (selection.discovery.length < 10) trace.record("selection", "under-produced", {
       missing: 10 - selection.discovery.length,
       reason: "Evidence-derived scaffolds were also unable to pass the complete validation contract.",
