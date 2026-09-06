@@ -67,6 +67,13 @@ describe("validateCandidates", () => {
     expect(result.findings.map(item => item.code)).toContain("unnatural-query-fragment");
   });
 
+  it("rejects customer-list retrieval labels pasted into buyer questions", () => {
+    const evidence = [baseEvidence({}), baseEvidence({ id: "e2", source: "web", visibility: "public", safeUse: "public", kind: "capability", claim: "Incident workflows are supported", quote: "Incident workflows" })];
+    const result = validate("Which incident platforms should buyers evaluate for customers Mercedes Benz Jira?", evidence);
+    expect(result.accepted).toBe(false);
+    expect(result.findings.map(item => item.code)).toContain("customer-list-fragment");
+  });
+
   it("accepts an explicit product-evaluation form of the same need", () => {
     const evidence = [baseEvidence({}), baseEvidence({ id: "e2", source: "web", visibility: "public", safeUse: "public", kind: "capability", claim: "Incident platforms support Slack status updates", quote: "Incident platforms support Slack status updates" })];
     expect(validate("Which incident platforms send status updates directly from Slack?", evidence).accepted).toBe(true);

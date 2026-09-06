@@ -45,4 +45,10 @@ describe("evidence-derived candidate scaffolds", () => {
     expect(scaffoldCandidates(company, [{ ...opportunity, topic: "edge-and-global-latency-reliability" }])[0]?.text)
       .toBe("Which AI application memory platforms should buyers evaluate for edge and global latency reliability?");
   });
+
+  it("does not turn customer-list retrieval labels into prompts", () => {
+    const company: CompanyConfig = { id: "domain-atlassian", name: "Atlassian", domain: "atlassian.com",
+      category: "company or product", githubOrganizations: [], enabledSources: ["web"] };
+    expect(scaffoldCandidates(company, [{ ...opportunity, topic: "customers-mercedes-benz-jira" }])).toEqual([]);
+  });
 });

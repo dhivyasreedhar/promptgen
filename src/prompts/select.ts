@@ -43,6 +43,32 @@ export function selectPrompts(candidates: ValidatedCandidate[], target = 10, pre
     if (isPeripheral(best.candidate.text)) peripheralCount += 1;
     pool.splice(pool.indexOf(best.candidate), 1);
   }
+  // Strict semantic overlap is useful for the first, diverse core but can
+  // over-collapse broad suites where every legitimate prompt repeats the
+  // category name (for example "project management"). Fill remaining slots
+  // from accepted candidates using only hard duplicate rules. This preserves
+  // the exactly-ten contract without allowing named-workflow or lexical copies.
+  while (selected.length < target && pool.length > 0) {
+    const mixAllows = (candidate: ValidatedCandidate) => !enforceCoreMix || peripheralCount < 2 || !isPeripheral(candidate.text);
+    const eligible = pool.filter(candidate => mixAllows(candidate) &&
+      (opportunityCounts.get(candidate.opportunityId) ?? 0) < 2 &&
+      !usedSemanticKeys.has(candidate.semanticKey ?? candidate.opportunityId) &&
+      materiallyDistinctWithinOpportunity(candidate, selected) &&
+      !selected.some(other => hardConflict(candidate, other)));
+    if (eligible.length === 0) break;
+    const best = eligible.map(candidate => ({ candidate,
+      utility: candidate.score + coverageNovelty(candidate, selected) * 0.12 + (matches(preferredIds, candidate) ? 0.12 : 0) -
+        Math.max(...selected.map(other => jaccard(candidate.text, other.text))) * 0.3,
+    })).sort((a, b) => b.utility - a.utility)[0];
+    if (!best) break;
+    selected.push(best.candidate);
+    usedOpportunities.add(best.candidate.opportunityId);
+    opportunityCounts.set(best.candidate.opportunityId, (opportunityCounts.get(best.candidate.opportunityId) ?? 0) + 1);
+    usedSemanticKeys.add(best.candidate.semanticKey ?? best.candidate.opportunityId);
+    usedUseCases.add(useCaseKey(best.candidate));
+    if (isPeripheral(best.candidate.text)) peripheralCount += 1;
+    pool.splice(pool.indexOf(best.candidate), 1);
+  }
   return { discovery: selected.map(item => toPrompt(item, benchmarkIds)), boundaries };
 }
 
@@ -100,12 +126,24 @@ function conflicts(left: ValidatedCandidate, right: ValidatedCandidate): boolean
     (evidenceOverlap >= 0.3 && distinctiveOverlap >= 0.12);
 }
 
+function hardConflict(left: ValidatedCandidate, right: ValidatedCandidate): boolean {
+  const keyOverlap = left.semanticKey && right.semanticKey ? setJaccard(keyTokens(left.semanticKey), keyTokens(right.semanticKey)) : 0;
+  const sharedNamedFacet = NAMED_FACETS.some(facet => left.text.toLowerCase().includes(facet) && right.text.toLowerCase().includes(facet));
+  const sharedSetupWizard = /\bwizard\b/i.test(left.text) && /\bwizard\b/i.test(right.text);
+  const sharedOnPremDeployment = /\bon[- ]prem(?:ises)?\b/i.test(left.text) && /\bon[- ]prem(?:ises)?\b/i.test(right.text) &&
+    /\bdeploy(?:ment|ed)?\b/i.test(left.text) && /\bdeploy(?:ment|ed)?\b/i.test(right.text);
+  const sharedConcept = CONCEPTS.some(patterns => patterns.every(pattern => pattern.test(left.text)) && patterns.every(pattern => pattern.test(right.text)));
+  return jaccard(left.text, right.text) >= 0.75 || sharedSetupWizard || sharedOnPremDeployment || sharedConcept ||
+    (sharedNamedFacet && keyOverlap >= 0.3);
+}
+
 const NAMED_FACETS = ["gitlab", "github", "jira", "slack", "pagerduty", "soc 2", "hipaa", "gdpr", "fedramp", "aws marketplace", "wizard"];
 const CONCEPTS = [
   [/\b(?:ai|artificial intelligence)\b/i, /\bautomat(?:e|es|ed|ing|ion)\b/i],
   [/\bpostmortem|retrospective\b/i, /\baudit|timeline\b/i],
   [/\bteamwork\b.{0,80}\bgraph\b|\bgraph\b.{0,80}\bteamwork\b/i],
   [/\bproduct discovery\b/i],
+  [/\b(?:large|huge|massive)\b.{0,60}\b(?:repo|repos|repository|repositories|monorepo|monorepos)\b/i],
   // Different generations often describe the same end-to-end agent-run
   // debugging situation with "execution", "session", or "run". Keep a
   // distinct tool-call/cost prompt, but do not spend two tracking slots on

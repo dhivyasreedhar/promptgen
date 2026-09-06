@@ -15,6 +15,7 @@ export function scaffoldCandidates(company: CompanyConfig, opportunities: Opport
   return opportunities.filter(opportunity => {
     const terms = humanTopic(opportunity.topic).toLowerCase().split(" ").filter(Boolean);
     return terms.length >= 2 && !terms.some(term => companyTokens.has(term)) &&
+      !/^(?:customers?|case studies?|testimonials?)\b/i.test(humanTopic(opportunity.topic)) &&
       !/\b(?:free|demo|trial|signup|sign-up|pricing|contact sales|book demo)\b/i.test(humanTopic(opportunity.topic));
   }).map(opportunity => {
     const topic = humanTopic(opportunity.topic);

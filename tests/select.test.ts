@@ -95,6 +95,13 @@ describe("selectPrompts", () => {
     expect(selectPrompts([graphView, teamworkGraph, discoveryIdeas, discoveryFeedback], 4).discovery).toHaveLength(2);
   });
 
+  it("fills ten from accepted broad-suite candidates after strict category overlap", () => {
+    const candidates = Array.from({ length: 12 }, (_, index) => ({ ...candidate(index),
+      semanticKey: `project-management-workflow-${index}`,
+    }));
+    expect(selectPrompts(candidates, 10).discovery).toHaveLength(10);
+  });
+
   it("marks approved stable prompts as benchmark prompts", () => {
     expect(selectPrompts([candidate(0)], 1, new Set(), new Set(["c0"])).discovery[0]?.set).toBe("benchmark");
   });

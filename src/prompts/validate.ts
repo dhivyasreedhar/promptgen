@@ -8,6 +8,7 @@ const NAMED_CONSTRAINTS = ["soc 2", "hipaa", "gdpr", "fedramp", "iso 27001", "on
 const SOLUTION_CUE = /\b(tools?|platforms?|software|solutions?|services?|vendors?|providers?|products?|systems?|apps?|apis?|infrastructure|agents?|reviewers?|alternatives?|replace|switch(?:ing)? to|what should (?:we|i) (?:use|choose|consider)|recommend)\b/i;
 const INFORMATIONAL_FRAMING = /^(?:how important is|why is|what is the importance of|what are the benefits of)\b/i;
 const QUERY_FRAGMENT_FRAMING = /\bbest for (?:vs\b|[^?]{0,80}\b(?:platform|product|vendor|tool) comparison\b)/i;
+const CUSTOMER_LIST_FRAGMENT = /\bshould buyers evaluate for customers?\b/i;
 
 export function validateCandidates(
   company: CompanyConfig,
@@ -38,6 +39,7 @@ export function validateCandidates(
       findings.push(fatal("not-recommendation-seeking", "Prompt is likely to produce advice or explanation rather than a product or vendor recommendation."));
     }
     if (QUERY_FRAGMENT_FRAMING.test(text)) findings.push(fatal("unnatural-query-fragment", "Prompt exposes an internal topic or comparison label instead of a natural buyer question."));
+    if (CUSTOMER_LIST_FRAGMENT.test(text)) findings.push(fatal("customer-list-fragment", "Prompt exposes a customer-list retrieval label instead of a buying situation."));
     if (!validPublicInference && !records.some(isBuyingSignal)) {
       findings.push(fatal("missing-buying-demand", "Demand evidence is support, implementation, retention, or operational noise rather than buying intent."));
     }
