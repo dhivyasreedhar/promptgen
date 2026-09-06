@@ -9,6 +9,7 @@ import { PostgresMetadataStore } from "./store/postgres-metadata.js";
 import type { CompanyConfig, EvidenceRecord, FeedbackReason, RunJob, RunResult, SourceArtifact } from "./types.js";
 import { log, normalizeText } from "./util.js";
 import { operationalMetrics } from "./operations/metrics.js";
+import { promoteRun } from "./quality/canary.js";
 import { redactedEvidenceExcerptForUi, safePreviewForUi } from "./privacy/transform.js";
 import { composeTrackingSet } from "./prompts/tracking-set.js";
 import { isScheduledMinute, runDueCompanies } from "./scheduler.js";
@@ -267,8 +268,13 @@ async function processClaimedJob(config: AppConfig, hosted: PostgresMetadataStor
   }, 1_000);
   cancellation.unref();
   try {
-    const result = await runCompany(config, job.company, { fixtures: job.fixtures, signal: controller.signal });
+    let result = await runCompany(config, job.company, { fixtures: job.fixtures, signal: controller.signal, publish: false, qualityProfile: "standard" });
+    if (result.status === "insufficient_evidence") {
+      const expanded = await runCompany(config, job.company, { fixtures: job.fixtures, signal: controller.signal, publish: false, qualityProfile: "expanded" });
+      if (expanded.discoveryPrompts.length >= result.discoveryPrompts.length) result = expanded;
+    }
     using db = new EvidenceDatabase(config.dbPath);
+    if (result.status === "complete" && result.discoveryPrompts.length === 10) await promoteRun(config, job.company, result, db);
     if (hosted) await hosted.finishJob(job.id, owner, result);
     else db.finishJob(job.id, owner, result);
   } finally {

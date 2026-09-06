@@ -81,11 +81,7 @@ export async function reassessStagedCanaries(config: AppConfig): Promise<DailyCa
         const assessment = await assessRun(config, result);
         attempts.push({ profile: index === 0 ? "expanded" : "standard", runId: result.runId, promptCount: result.discoveryPrompts.length, ...assessment });
         if (assessment.passed) {
-          db.publishRun(result.runId); promotedRunId = result.runId;
-          if (config.postgresUrl) {
-            await using metadata = new PostgresMetadataStore(config.postgresUrl, config.tenantId, config.tenantName);
-            await metadata.finishRun(company, result, db.sourceHealth(company.id), db.traceForRun(result.runId), true);
-          }
+          await promoteRun(config, company, result, db); promotedRunId = result.runId;
           break;
         }
       } catch (error) {
@@ -112,11 +108,7 @@ async function runCompanyCanary(config: AppConfig, company: CompanyConfig, fixtu
       attempts.push({ profile, runId: result.runId, promptCount: result.discoveryPrompts.length, ...assessment });
       if (assessment.passed) {
         using db = new EvidenceDatabase(config.dbPath);
-        db.publishRun(result.runId);
-        if (config.postgresUrl) {
-          await using metadata = new PostgresMetadataStore(config.postgresUrl, config.tenantId, config.tenantName);
-          await metadata.finishRun(company, result, db.sourceHealth(company.id), db.traceForRun(result.runId), true);
-        }
+        await promoteRun(config, company, result, db);
         return { companyId: company.id, passed: true, promotedRunId: result.runId, retainedPrevious: false, attempts };
       }
     } catch (error) {
@@ -126,6 +118,17 @@ async function runCompanyCanary(config: AppConfig, company: CompanyConfig, fixtu
     }
   }
   return { companyId: company.id, passed: false, retainedPrevious: true, attempts };
+}
+
+export async function promoteRun(config: AppConfig, company: CompanyConfig, result: RunResult, db?: EvidenceDatabase): Promise<void> {
+  const owned = db ?? new EvidenceDatabase(config.dbPath);
+  try {
+    owned.publishRun(result.runId);
+    if (config.postgresUrl) {
+      await using metadata = new PostgresMetadataStore(config.postgresUrl, config.tenantId, config.tenantName);
+      await metadata.finishRun(company, result, owned.sourceHealth(company.id), owned.traceForRun(result.runId), true);
+    }
+  } finally { if (!db) owned.close(); }
 }
 
 export async function assessRun(config: AppConfig, result: RunResult): Promise<Omit<CanaryAttempt, "profile" | "runId" | "promptCount">> {
