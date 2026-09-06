@@ -102,6 +102,13 @@ describe("selectPrompts", () => {
     expect(selectPrompts(candidates, 10).discovery).toHaveLength(10);
   });
 
+  it("clusters idea-capture keys after removing generic category terms", () => {
+    const discovery = { ...candidate(0), text: "What platforms let product managers run discovery and capture product ideas?", semanticKey: "discovery-idea-capture-with-project-tracking" };
+    const prioritization = { ...candidate(1), text: "Which tools help product teams capture and prioritize ideas?", semanticKey: "capture-prioritize-product-ideas" };
+    const feedback = { ...candidate(2), text: "Which tools feed customer feedback into product discovery prioritization?", semanticKey: "capture-customer-feedback-in-product-discovery" };
+    expect(selectPrompts([discovery, prioritization, feedback], 3).discovery).toHaveLength(1);
+  });
+
   it("marks approved stable prompts as benchmark prompts", () => {
     expect(selectPrompts([candidate(0)], 1, new Set(), new Set(["c0"])).discovery[0]?.set).toBe("benchmark");
   });

@@ -121,19 +121,20 @@ function conflicts(left: ValidatedCandidate, right: ValidatedCandidate): boolean
     sharedOnPremDeployment ||
     (sharedNamedFacet && keyOverlap >= 0.3) ||
     sharedConcept ||
-    keyOverlap >= 0.42 ||
+    keyOverlap >= 0.3 ||
     (semanticIntersection >= 3 && semanticOverlap >= 0.28) ||
     (evidenceOverlap >= 0.3 && distinctiveOverlap >= 0.12);
 }
 
 function hardConflict(left: ValidatedCandidate, right: ValidatedCandidate): boolean {
   const keyOverlap = left.semanticKey && right.semanticKey ? setJaccard(keyTokens(left.semanticKey), keyTokens(right.semanticKey)) : 0;
+  const distinctArchetypeWithinOpportunity = left.opportunityId === right.opportunityId && left.archetype !== right.archetype;
   const sharedNamedFacet = NAMED_FACETS.some(facet => left.text.toLowerCase().includes(facet) && right.text.toLowerCase().includes(facet));
   const sharedSetupWizard = /\bwizard\b/i.test(left.text) && /\bwizard\b/i.test(right.text);
   const sharedOnPremDeployment = /\bon[- ]prem(?:ises)?\b/i.test(left.text) && /\bon[- ]prem(?:ises)?\b/i.test(right.text) &&
     /\bdeploy(?:ment|ed)?\b/i.test(left.text) && /\bdeploy(?:ment|ed)?\b/i.test(right.text);
   const sharedConcept = CONCEPTS.some(patterns => patterns.every(pattern => pattern.test(left.text)) && patterns.every(pattern => pattern.test(right.text)));
-  return jaccard(left.text, right.text) >= 0.75 || sharedSetupWizard || sharedOnPremDeployment || sharedConcept ||
+  return jaccard(left.text, right.text) >= 0.75 || (!distinctArchetypeWithinOpportunity && keyOverlap >= 0.3) || sharedSetupWizard || sharedOnPremDeployment || sharedConcept ||
     (sharedNamedFacet && keyOverlap >= 0.3);
 }
 
@@ -158,9 +159,14 @@ const CONCEPTS = [
 const KEY_SYNONYMS: Record<string, string> = {
   search: "retrieval", realtime: "interactive", response: "interactive", speed: "latency", fast: "latency", reducing: "reduce",
   repo: "repository", repos: "repository", monorepo: "repository", monorepos: "repository", retention: "context", preserving: "context",
+  ideas: "idea", prioritize: "discovery", prioritization: "discovery",
 };
+const KEY_GENERIC = new Set([
+  "project", "management", "product", "platform", "platforms", "tool", "tools", "software", "solution", "solutions",
+  "code", "review", "incident", "document", "memory", "observability", "workflow", "workflows", "with", "for", "and", "to",
+]);
 function keyTokens(key: string): string[] {
-  return [...new Set(tokenize(key.replaceAll("-", " ")).map(term => KEY_SYNONYMS[term] ?? term))];
+  return [...new Set(tokenize(key.replaceAll("-", " ")).map(term => KEY_SYNONYMS[term] ?? term).filter(term => !KEY_GENERIC.has(term)))];
 }
 
 const SYNONYMS: Record<string, string> = {
