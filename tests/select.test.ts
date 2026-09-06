@@ -87,6 +87,14 @@ describe("selectPrompts", () => {
     expect(selectPrompts([first, duplicate], 2).discovery).toHaveLength(1);
   });
 
+  it("deduplicates named workflow concepts despite different surrounding wording", () => {
+    const graphView = { ...candidate(0), text: "Which teamwork platforms provide a graph-based view of how teams collaborate?", semanticKey: "graph-collaboration-view" };
+    const teamworkGraph = { ...candidate(1), text: "What project tools use a teamwork graph to surface context across teams?", semanticKey: "cross-team-context-graph" };
+    const discoveryIdeas = { ...candidate(2), text: "What platforms run product discovery and capture product ideas?", semanticKey: "idea-capture" };
+    const discoveryFeedback = { ...candidate(3), text: "Which tools feed customer feedback into product discovery prioritization?", semanticKey: "feedback-prioritization" };
+    expect(selectPrompts([graphView, teamworkGraph, discoveryIdeas, discoveryFeedback], 4).discovery).toHaveLength(2);
+  });
+
   it("marks approved stable prompts as benchmark prompts", () => {
     expect(selectPrompts([candidate(0)], 1, new Set(), new Set(["c0"])).discovery[0]?.set).toBe("benchmark");
   });

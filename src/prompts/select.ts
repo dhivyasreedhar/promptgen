@@ -104,6 +104,8 @@ const NAMED_FACETS = ["gitlab", "github", "jira", "slack", "pagerduty", "soc 2",
 const CONCEPTS = [
   [/\b(?:ai|artificial intelligence)\b/i, /\bautomat(?:e|es|ed|ing|ion)\b/i],
   [/\bpostmortem|retrospective\b/i, /\baudit|timeline\b/i],
+  [/\bteamwork\b.{0,80}\bgraph\b|\bgraph\b.{0,80}\bteamwork\b/i],
+  [/\bproduct discovery\b/i],
   // Different generations often describe the same end-to-end agent-run
   // debugging situation with "execution", "session", or "run". Keep a
   // distinct tool-call/cost prompt, but do not spend two tracking slots on
