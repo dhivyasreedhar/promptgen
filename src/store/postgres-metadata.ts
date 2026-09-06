@@ -41,7 +41,7 @@ export class PostgresMetadataStore implements AsyncDisposable {
     });
   }
 
-  async finishRun(company: CompanyConfig, result: RunResult, health: SourceHealth[], events: TraceEvent[]): Promise<void> {
+  async finishRun(company: CompanyConfig, result: RunResult, health: SourceHealth[], events: TraceEvent[], publishPrompts = true): Promise<void> {
     await this.transaction(async client => {
       const companyId = await this.ensureCompany(client, company);
       const runUuid = stableUuid("run", result.runId);
@@ -63,7 +63,7 @@ export class PostgresMetadataStore implements AsyncDisposable {
           VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb)`,
         [this.tenantId, companyId, runUuid, event.at, event.stage, event.action, event.subjectId ?? null, JSON.stringify(event.data)]);
       }
-      if (result.status !== "failed") {
+      if (publishPrompts && result.status !== "failed") {
         const prior = await client.query<{ semantic_key: string; stable_key: string }>(
           "SELECT semantic_key,stable_key FROM tracking_prompts WHERE tenant_id=$1 AND company_id=$2 AND active", [this.tenantId, companyId]);
         const priorBySemantic = new Map(prior.rows.map(row => [row.semantic_key, row.stable_key]));

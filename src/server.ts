@@ -104,6 +104,10 @@ async function route(config: AppConfig, fixtures: boolean, hosted: PostgresMetad
     response.writeHead(200, { "content-type": "text/plain; version=0.0.4; charset=utf-8", "cache-control": "no-store" });
     response.end(operationalMetrics.render()); return;
   }
+  if (request.method === "GET" && url.pathname === "/api/quality") {
+    using db = new EvidenceDatabase(config.dbPath);
+    json(response, 200, { latestCanary: db.latestCanaryReport() ?? null }); return;
+  }
   if (request.method === "POST" && request.headers.origin && new URL(request.headers.origin).host !== request.headers.host) {
     json(response, 403, { error: "Cross-origin mutation denied" }); return;
   }

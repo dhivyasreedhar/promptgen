@@ -21,13 +21,14 @@ const promptResultSchema = z.object({ results: z.array(z.object({
 })) });
 
 type RetrievalResult = z.infer<typeof retrievalResultSchema>["results"][number];
-type PromptResult = z.infer<typeof promptResultSchema>["results"][number];
+export type PromptJudgeResult = z.infer<typeof promptResultSchema>["results"][number];
+type PromptResult = PromptJudgeResult;
 type JudgeFile = { schemaVersion: 1; provider: string; updatedAt: string; retrieval: Record<string, { a?: RetrievalResult; b?: RetrievalResult }>; prompts: Record<string, { a?: PromptResult; b?: PromptResult }> };
-type Corpus = { cases: Array<Record<string, unknown>> };
+type Corpus = { generatedAt?: string; cases: Array<Record<string, unknown>> };
 
 export interface LlmJudgeReport {
   provider: string;
-  retrieval: { total: number; twiceJudged: number; agreement: number; poolRecordRecallAt12: number; uniqueClaimRecallAt12: number; precisionAt12: number; flaggedForHuman: string[] };
+  retrieval: { total: number; twiceJudged: number; agreement: number; poolRecordRecallAt12: number; uniqueClaimRecallAt12: number; precisionAt12: number; forbiddenHitRate: number; flaggedForHuman: string[] };
   prompts: {
     total: number; twiceJudged: number;
     pipelineAccepted: PromptJudgeAggregate;
@@ -67,27 +68,49 @@ export async function readOpenAiJudgeReport(config: AppConfig): Promise<LlmJudge
   const directory = path.join(config.rootDir, "eval", "annotations");
   const [retrieval, prompts, stored] = await Promise.all([
     loadCorpus(path.join(directory, "retrieval.json")), loadCorpus(path.join(directory, "prompts.json")),
-    loadJudge(path.join(directory, "openai-judgments.json"), `openai:${config.openaiJudgeModel}`),
+    loadJudge(path.join(directory, "openai-judgments.json")),
   ]);
   return report(stored, retrieval, prompts);
+}
+
+/** Judge a current production candidate set twice, reversing evidence order on pass B. */
+export async function judgeCurrentPrompts(config: AppConfig, items: Array<{ caseId: string; prompt: string; evidence: Array<{ id: string; source: string; kind: string; text: string }> }>): Promise<{ a: PromptJudgeResult[]; b: PromptJudgeResult[] }> {
+  if (!config.openaiApiKey) throw new Error("OPENAI_API_KEY is required for the live prompt judge");
+  const client = new OpenAI({ apiKey: config.openaiApiKey, timeout: config.modelTimeoutMs, maxRetries: 3 });
+  const run = async (pass: "a" | "b") => {
+    const payload = items.map(item => ({ ...item, evidence: pass === "b" ? [...item.evidence].reverse() : item.evidence }));
+    const response = await client.responses.create({ model: config.openaiJudgeModel,
+      instructions: PROMPT_INSTRUCTIONS, input: JSON.stringify(payload),
+      text: { format: { type: "json_schema", name: "current_prompt_judgments", schema: promptJsonSchema, strict: true } } });
+    if (!response.output_text) throw new Error("OpenAI returned no live prompt judgments");
+    const parsed = promptResultSchema.parse(JSON.parse(response.output_text)).results;
+    const allowed = new Set(items.map(item => item.caseId));
+    return parsed.filter(item => allowed.has(item.caseId));
+  };
+  const [a, b] = await Promise.all([run("a"), run("b")]);
+  return { a, b };
 }
 
 export async function rerankFrozenRetrievalCorpus(config: AppConfig): Promise<LlmJudgeReport> {
   const directory = path.join(config.rootDir, "eval", "annotations");
   const retrievalPath = path.join(directory, "retrieval.json");
-  const [retrieval, prompts, stored] = await Promise.all([
+  const [retrieval, prompts, stored, frozenEvidence] = await Promise.all([
     loadCorpus(retrievalPath), loadCorpus(path.join(directory, "prompts.json")),
-    loadJudge(path.join(directory, "openai-judgments.json"), `openai:${config.openaiJudgeModel}`),
+    loadJudge(path.join(directory, "openai-judgments.json")), loadFrozenEvidence(path.join(directory, "evidence.json")),
   ]);
   using db = new EvidenceDatabase(config.dbPath);
-  const healthByCompany = new Map<string, Map<ReturnType<typeof db.sourceHealth>[number]["source"], ReturnType<typeof db.sourceHealth>[number]>>();
+  const evaluationTime = retrieval.generatedAt ? Date.parse(retrieval.generatedAt) : Date.now();
   for (const item of retrieval.cases) {
     const companyId = String(item.companyId);
-    let health = healthByCompany.get(companyId); if (!health) { health = new Map(db.sourceHealth(companyId).map(entry => [entry.source, entry])); healthByCompany.set(companyId, health); }
-    const ids = item.candidateEvidenceIds as string[]; const byId = new Map(db.evidenceByIds(ids).map(record => [record.id, record]));
+    const ids = item.candidateEvidenceIds as string[]; const byId = new Map(ids.flatMap(id => {
+      const record = frozenEvidence.get(id); return record ? [record] : [];
+    }).map(record => [record.id, record]));
+    if (byId.size !== ids.length) for (const record of db.evidenceByIds(ids.filter(id => !byId.has(id)))) byId.set(record.id, record);
     const matches = ids.flatMap((id, index) => { const record = byId.get(id); return record ? [{ record, lexicalRank: index + 1 }] : []; });
     const need: EvidenceNeed = { id: String(item.id), query: String(item.query), kinds: item.kinds as EvidenceKind[], reason: "Frozen evaluation rerank", preferredSources: [] };
-    item.rankedEvidenceIds = rankCandidatePool(matches, need, 12, { scopes: item.accessScopes as string[] }, health).records.map(record => record.evidence.id);
+    const reranked = rankCandidatePool(matches, need, 12, { scopes: item.accessScopes as string[] }, undefined, evaluationTime).records.map(record => record.evidence.id);
+    const priorUnknown = (item.rankedEvidenceIds as string[]).filter(id => !byId.has(id));
+    item.rankedEvidenceIds = [...new Set([...reranked, ...priorUnknown])].slice(0, 12);
     item.claimGroupKeys = Object.fromEntries([...byId].map(([id, record]) => [id, stableId(normalizeText(record.claim).toLowerCase())]));
   }
   await atomicCorpus(retrievalPath, retrieval);
@@ -105,7 +128,7 @@ async function judgeRetrieval(client: OpenAI, model: string, corpus: Corpus, sto
         let evidence = ids.flatMap(id => { const record = records.get(id); if (!record) return []; const safe = transformEvidenceForExternal(record).evidence; return safe ? [{ id, source: safe.source, kind: safe.kind, text: safe.safeSummary }] : []; });
         if (pass === "b") evidence = [...evidence].reverse(); return { caseId: item.id, query: item.query, evidence };
       });
-      const response = await client.responses.create({ model, reasoning: { effort: "minimal" }, instructions: RETRIEVAL_INSTRUCTIONS, input: JSON.stringify(payload),
+      const response = await client.responses.create({ model, instructions: RETRIEVAL_INSTRUCTIONS, input: JSON.stringify(payload),
         text: { format: { type: "json_schema", name: "retrieval_judgments", schema: retrievalJsonSchema, strict: true } } });
       if (!response.output_text) throw new Error("OpenAI returned no retrieval judgments");
       const results = retrievalResultSchema.parse(JSON.parse(response.output_text)).results;
@@ -133,7 +156,7 @@ async function judgePrompts(client: OpenAI, model: string, corpus: Corpus, store
         let evidence = ids.flatMap(id => { const record = records.get(id); if (!record) return []; const safe = transformEvidenceForExternal(record).evidence; return safe ? [{ id, source: safe.source, kind: safe.kind, text: safe.safeSummary }] : []; });
         if (pass === "b") evidence = [...evidence].reverse(); return { caseId: item.id, prompt: item.text, evidence };
       });
-      const response = await client.responses.create({ model, reasoning: { effort: "minimal" }, instructions: PROMPT_INSTRUCTIONS, input: JSON.stringify(payload),
+      const response = await client.responses.create({ model, instructions: PROMPT_INSTRUCTIONS, input: JSON.stringify(payload),
         text: { format: { type: "json_schema", name: "prompt_judgments", schema: promptJsonSchema, strict: true } } });
       if (!response.output_text) throw new Error("OpenAI returned no prompt judgments");
       const results = promptResultSchema.parse(JSON.parse(response.output_text)).results;
@@ -153,13 +176,14 @@ function report(stored: JudgeFile, retrievalCorpus: Corpus, promptCorpus: Corpus
   const rankedByCase = new Map(retrievalCorpus.cases.map(item => [String(item.id), item.rankedEvidenceIds as string[]]));
   const claimGroupsByCase = new Map(retrievalCorpus.cases.map(item => [String(item.id), (item.claimGroupKeys ?? {}) as Record<string, string>]));
   const retrieval = Object.entries(stored.retrieval).filter((entry): entry is [string, { a: RetrievalResult; b: RetrievalResult }] => Boolean(entry[1].a && entry[1].b));
-  let relevant = 0, hit = 0, uniqueRelevant = 0, uniqueHit = 0, retrieved = 0, relevantRetrieved = 0, matchingLabels = 0, totalLabels = 0;
+  let relevant = 0, hit = 0, uniqueRelevant = 0, uniqueHit = 0, retrieved = 0, relevantRetrieved = 0, forbiddenRetrieved = 0, matchingLabels = 0, totalLabels = 0;
   const retrievalRisk: Array<{ id: string; risk: number }> = [];
   for (const [id, passes] of retrieval) {
     const a = new Map(passes.a.labels.map(label => [label.evidenceId, label.relevance])); const b = new Map(passes.b.labels.map(label => [label.evidenceId, label.relevance]));
     const ids = new Set([...a.keys(), ...b.keys()]); const consensusRelevant = new Set<string>();
     for (const evidenceId of ids) { totalLabels++; if (a.get(evidenceId) === b.get(evidenceId)) matchingLabels++; if (["relevant", "partial"].includes(a.get(evidenceId) ?? "") && ["relevant", "partial"].includes(b.get(evidenceId) ?? "")) consensusRelevant.add(evidenceId); }
     const ranked = rankedByCase.get(id) ?? []; relevant += consensusRelevant.size; hit += ranked.filter(item => consensusRelevant.has(item)).length; retrieved += ranked.length; relevantRetrieved += ranked.filter(item => consensusRelevant.has(item)).length;
+    forbiddenRetrieved += ranked.filter(evidenceId => a.get(evidenceId) === "forbidden" && b.get(evidenceId) === "forbidden").length;
     const groupKeys = claimGroupsByCase.get(id) ?? {};
     const relevantGroups = new Set([...consensusRelevant].map(evidenceId => groupKeys[evidenceId] ?? evidenceId));
     const rankedGroups = new Set(ranked.map(evidenceId => groupKeys[evidenceId] ?? evidenceId));
@@ -175,7 +199,7 @@ function report(stored: JudgeFile, retrievalCorpus: Corpus, promptCorpus: Corpus
     const avg = (key: string) => items.length ? items.reduce((sum, item) => sum + Number(item[key]), 0) / items.length : 0;
     return { total: items.length, judgeAcceptanceRate: avg("accept"), averageBuyerIntent: avg("buyerIntent"), averageRecommendationLikelihood: avg("recommendationLikelihood"), averageEvidenceEntailment: avg("evidenceEntailment"), averageDistinctness: avg("distinctness"), averageNaturalness: avg("naturalness") };
   };
-  return { provider: stored.provider, retrieval: { total: retrievalCorpus.cases.length, twiceJudged: retrieval.length, agreement: totalLabels ? matchingLabels / totalLabels : 0, poolRecordRecallAt12: relevant ? hit / relevant : 0, uniqueClaimRecallAt12: uniqueRelevant ? uniqueHit / uniqueRelevant : 0, precisionAt12: retrieved ? relevantRetrieved / retrieved : 0, flaggedForHuman: retrievalRisk.sort((a,b)=>b.risk-a.risk||a.id.localeCompare(b.id)).slice(0,15).map(item=>item.id) },
+  return { provider: stored.provider, retrieval: { total: retrievalCorpus.cases.length, twiceJudged: retrieval.length, agreement: totalLabels ? matchingLabels / totalLabels : 0, poolRecordRecallAt12: relevant ? hit / relevant : 0, uniqueClaimRecallAt12: uniqueRelevant ? uniqueHit / uniqueRelevant : 0, precisionAt12: retrieved ? relevantRetrieved / retrieved : 0, forbiddenHitRate: retrieved ? forbiddenRetrieved / retrieved : 0, flaggedForHuman: retrievalRisk.sort((a,b)=>b.risk-a.risk||a.id.localeCompare(b.id)).slice(0,15).map(item=>item.id) },
     prompts: { total: promptCorpus.cases.length, twiceJudged: prompts.length, pipelineAccepted: aggregate(consensus.filter(item => item.decision === "accepted")), pipelineRejected: aggregate(consensus.filter(item => item.decision === "rejected")), flaggedForHuman: promptRisk.sort((a,b)=>b.risk-a.risk||a.id.localeCompare(b.id)).slice(0,20).map(item=>item.id) } };
 }
 
@@ -208,6 +232,10 @@ const promptJsonSchema = {
   },
 };
 async function loadCorpus(file: string): Promise<Corpus> { return JSON.parse(await readFile(file, "utf8")) as Corpus; }
-async function loadJudge(file: string, provider: string): Promise<JudgeFile> { try { const parsed = JSON.parse(await readFile(file, "utf8")) as JudgeFile; return parsed.provider === provider ? parsed : { schemaVersion: 1, provider, updatedAt: new Date().toISOString(), retrieval: {}, prompts: {} }; } catch (error) { if (error instanceof Error && "code" in error && error.code === "ENOENT") return { schemaVersion: 1, provider, updatedAt: new Date().toISOString(), retrieval: {}, prompts: {} }; throw error; } }
+async function loadFrozenEvidence(file: string): Promise<Map<string, import("./types.js").EvidenceRecord>> {
+  try { const parsed = JSON.parse(await readFile(file, "utf8")) as { records: import("./types.js").EvidenceRecord[] }; return new Map(parsed.records.map(record => [record.id, record])); }
+  catch (error) { if (error instanceof Error && "code" in error && error.code === "ENOENT") return new Map(); throw error; }
+}
+async function loadJudge(file: string, provider?: string): Promise<JudgeFile> { try { const parsed = JSON.parse(await readFile(file, "utf8")) as JudgeFile; return !provider || parsed.provider === provider ? parsed : { schemaVersion: 1, provider, updatedAt: new Date().toISOString(), retrieval: {}, prompts: {} }; } catch (error) { if (error instanceof Error && "code" in error && error.code === "ENOENT") return { schemaVersion: 1, provider: provider ?? "unknown", updatedAt: new Date().toISOString(), retrieval: {}, prompts: {} }; throw error; } }
 async function saveJudge(file: string, value: JudgeFile): Promise<void> { value.updatedAt = new Date().toISOString(); const temporary = `${file}.tmp`; await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, "utf8"); await rename(temporary, file); }
 async function atomicCorpus(file: string, value: Corpus): Promise<void> { const temporary = `${file}.tmp`; await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, "utf8"); await rename(temporary, file); }

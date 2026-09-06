@@ -26,7 +26,15 @@ import { safeEmbeddingText, transformEvidenceForExternal } from "../privacy/tran
 import { isBuyingSignal } from "../context/intent.js";
 import { isEvidenceEligible } from "../context/policy.js";
 
-export interface RunOptions { fixtures: boolean; timeoutMs?: number; signal?: AbortSignal }
+export interface RunOptions {
+  fixtures: boolean;
+  timeoutMs?: number;
+  signal?: AbortSignal;
+  /** Canary candidates stay hidden until an independent judge promotes them. */
+  publish?: boolean;
+  /** Bounded retry profile: expands recall and bypasses model caches without changing code or thresholds. */
+  qualityProfile?: "standard" | "expanded";
+}
 
 export async function runCompany(config: AppConfig, company: CompanyConfig, options: RunOptions): Promise<RunResult> {
   const runStarted = performance.now();
@@ -36,7 +44,8 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
   const runDirectory = path.join(config.runsDir, company.id, runId);
   await mkdir(runDirectory, { recursive: true });
   using db = new EvidenceDatabase(config.dbPath);
-  db.startRun(runId, company.id, startedAt);
+  const publish = options.publish !== false;
+  db.startRun(runId, company.id, startedAt, publish);
   const trace = new TraceRecorder(db, runId, company.id);
   const model = createPromptModel(config);
   const reviewer = createReviewModel(config, model);
@@ -56,7 +65,8 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
     await metadata?.startRun(company, runId, startedAt, model.name);
     trace.record("run", "started", { fixtures: options.fixtures, provider: model.name, enabledSources: company.enabledSources,
       ...(version ? { buildVersion: version } : {}) });
-    const connectorConfig = publicFastPath ? { ...config, maxPublicPages: Math.min(config.maxPublicPages, 16) } : config;
+    const connectorConfig = publicFastPath ? { ...config, maxPublicPages: options.qualityProfile === "expanded"
+      ? Math.min(30, Math.max(config.maxPublicPages, 24)) : Math.min(config.maxPublicPages, 16) } : config;
     for (const connector of buildConnectors(connectorConfig, options.fixtures).filter(item => company.enabledSources.includes(item.source))) {
       let sourceCount = 0;
       let collectedCount = 0;
@@ -203,8 +213,10 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
     // Connected runs have much richer evidence and need a wider model-written
     // pool. Sixteen was too brittle: one strict review could leave exactly ten
     // accepted candidates, two of which might represent the same situation.
-    const generationOptions = publicFastPath ? { minCandidates: 16, maxCandidates: 16 } : { minCandidates: 24, maxCandidates: 24 };
-    const generationVersion = publicFastPath ? "generate-v7-public-diverse-pages" : "generate-v7-connected-diverse-pool";
+    const expanded = options.qualityProfile === "expanded";
+    const generationOptions = publicFastPath ? { minCandidates: expanded ? 24 : 16, maxCandidates: expanded ? 24 : 16 }
+      : { minCandidates: expanded ? 32 : 24, maxCandidates: expanded ? 32 : 24 };
+    const generationVersion = `${publicFastPath ? "generate-v7-public-diverse-pages" : "generate-v7-connected-diverse-pool"}-${expanded ? "expanded" : "standard"}`;
     const generatedOutput = await cachedModelCall(db, trace, model.name, generationVersion,
       { company, opportunities, generationOptions, evidence: opportunities.flatMap(item => item.evidenceIds.map(id => evidenceById.get(id))) },
       () => model.generate(company, opportunities, evidenceById, controller.signal, generationOptions));
@@ -249,7 +261,7 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
     const deterministic = validateCandidates(company, eligibleCandidates, opportunities, evidenceById);
     const reviewable = deterministic.filter(item => item.accepted);
     tracePrivacy(trace, reviewable.flatMap(item => item.evidenceIds.map(id => evidenceById.get(id))).filter((item): item is EvidenceRecord => Boolean(item)), "candidate-review");
-    const modelReviews = await cachedModelCall(db, trace, reviewer.name, "review-v6-complete-atomic-claims", { company, candidates: reviewable, evidence: reviewable.flatMap(item => item.evidenceIds.map(id => evidenceById.get(id))) }, () => reviewer.review(company, reviewable, evidenceById, controller.signal));
+    const modelReviews = await cachedModelCall(db, trace, reviewer.name, `review-v6-complete-atomic-claims-${expanded ? "expanded" : "standard"}`, { company, candidates: reviewable, evidence: reviewable.flatMap(item => item.evidenceIds.map(id => evidenceById.get(id))) }, () => reviewer.review(company, reviewable, evidenceById, controller.signal));
     const reviewById = new Map(modelReviews.map(review => [review.candidateId, review]));
     const validated = attachPromptContext(applyModelReviews(deterministic, reviewById, evidenceById), opportunities, evidenceById);
     const guidance = metadata ? await metadata.promptGuidance(company.id) : { rejected: [], preferred: [], benchmark: [], rules: [] };
@@ -304,7 +316,7 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
     };
     await writeResult(runDirectory, result);
     db.finishRun(result);
-    await metadata?.finishRun(company, result, db.sourceHealth(company.id), db.traceForRun(runId));
+    await metadata?.finishRun(company, result, db.sourceHealth(company.id), db.traceForRun(runId), publish);
     log("info", "run.completed", { runId, companyId: company.id, status, prompts: selection.discovery.length, provider: model.name });
     operationalMetrics.increment("promptgen_runs_total", { status, company: company.id });
     operationalMetrics.observe("promptgen_run_duration_seconds", (performance.now() - runStarted) / 1000, { status, company: company.id });
@@ -323,7 +335,7 @@ export async function runCompany(config: AppConfig, company: CompanyConfig, opti
     await writeResult(runDirectory, result);
     db.finishRun(result);
     if (metadata) {
-      try { await metadata.finishRun(company, result, db.sourceHealth(company.id), db.traceForRun(runId)); }
+      try { await metadata.finishRun(company, result, db.sourceHealth(company.id), db.traceForRun(runId), publish); }
       catch (metadataError) { warnings.push(`Hosted metadata sync failed: ${errorMessage(metadataError)}`); }
     }
     log("error", "run.failed", { runId, companyId: company.id, error: message });

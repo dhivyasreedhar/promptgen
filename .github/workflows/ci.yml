@@ -14,7 +14,7 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm test
-      - run: npm run eval:human
-      - run: npm run eval:judge:report
+      - name: Machine quality release gate (150 retrieval + 200 prompt cases)
+        run: npm run eval:release-gate
       - run: npm run build
       - run: npm audit --audit-level=high

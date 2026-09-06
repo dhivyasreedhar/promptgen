@@ -37,27 +37,27 @@ export class EvidenceRetriever {
 }
 
 export function rankCandidatePool(matches: Array<{ record: EvidenceRecord; lexicalRank: number }>, need: EvidenceNeed, limit: number,
-  access: AccessContext = DEFAULT_ACCESS, health = new Map<SourceType, SourceHealth>()): { records: RankedEvidence[]; reconciliation: ReturnType<typeof reconcileRankedEvidence>["decisions"] } {
-  const reconciled = reconcileRankedEvidence(rankEvidenceCandidates(matches, need, access, health));
+  access: AccessContext = DEFAULT_ACCESS, health = new Map<SourceType, SourceHealth>(), nowMs = Date.now()): { records: RankedEvidence[]; reconciliation: ReturnType<typeof reconcileRankedEvidence>["decisions"] } {
+  const reconciled = reconcileRankedEvidence(rankEvidenceCandidates(matches, need, access, health, nowMs));
   return { records: diversify(reconciled.records, limit), reconciliation: reconciled.decisions };
 }
 
 export function rankEvidenceCandidates(matches: Array<{ record: EvidenceRecord; lexicalRank: number }>, need: EvidenceNeed,
-  access: AccessContext = DEFAULT_ACCESS, health = new Map<SourceType, SourceHealth>()): RankedEvidence[] {
+  access: AccessContext = DEFAULT_ACCESS, health = new Map<SourceType, SourceHealth>(), nowMs = Date.now()): RankedEvidence[] {
   const originalTerms = tokenize(need.query);
   const queryTerms = expandTerms(originalTerms);
   const coreTerms = coreQueryTerms(originalTerms);
   return matches
     .filter(({ record }) => need.kinds.includes(record.kind) && isEvidenceEligible(record, access))
     .map(({ record, lexicalRank }) => {
-      const ranked = scoreRecord(record, need, lexicalRank, queryTerms, coreTerms, health.get(record.source));
+      const ranked = scoreRecord(record, need, lexicalRank, queryTerms, coreTerms, health.get(record.source), nowMs);
       if (!relevanceGate(record, originalTerms, queryTerms, coreTerms)) { ranked.score -= 0.85; ranked.reasons.push("weak-core-match"); }
       return ranked;
     })
     .sort((a, b) => b.score - a.score || b.evidence.authority! - a.evidence.authority! || a.evidence.id.localeCompare(b.evidence.id));
 }
 
-function scoreRecord(record: EvidenceRecord, need: EvidenceNeed, lexicalRank: number, queryTerms: string[], coreTerms: string[], health?: SourceHealth): RankedEvidence {
+function scoreRecord(record: EvidenceRecord, need: EvidenceNeed, lexicalRank: number, queryTerms: string[], coreTerms: string[], health: SourceHealth | undefined, nowMs: number): RankedEvidence {
   const reasons: string[] = [];
   const recordTerms = new Set(tokenize(`${record.claim} ${record.quote} ${record.tags.join(" ").replaceAll("-", " ")}`));
   const semanticCoverage = queryTerms.filter(term => recordTerms.has(term)).length / Math.max(1, queryTerms.length);
@@ -71,7 +71,7 @@ function scoreRecord(record: EvidenceRecord, need: EvidenceNeed, lexicalRank: nu
   if ((record.kind === "demand" || record.kind === "language" || record.kind === "comparison") && record.buyerIntent && LOW_INTENT.has(record.buyerIntent)) { score -= 0.55; reasons.push(`low-intent:${record.buyerIntent}`); }
   if (record.claim.length > 500 || /Products Pricing Docs Community Company/i.test(record.claim)) { score -= 0.38; reasons.push("boilerplate-penalty"); }
   if (record.visibility === "public") { score += 0.1; reasons.push("publicly-verifiable"); }
-  const ageDays = Math.max(0, (Date.now() - Date.parse(record.occurredAt)) / 86_400_000);
+  const ageDays = Math.max(0, (nowMs - Date.parse(record.occurredAt)) / 86_400_000);
   const freshness = Math.pow(0.5, ageDays / freshnessHalfLifeDays(record.source));
   score += freshness * 0.2;
   const authority = record.authority ?? 0.5;

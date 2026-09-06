@@ -67,11 +67,13 @@ npm run eval:annotate -- prompts reviewer-a --limit=25
 npm run eval:gate
 npm run eval:judge
 npm run eval:judge:report
+npm run eval:release-gate
+npm run canary
 npx tsx src/cli.ts scheduler --fixtures
 npm run serve
 ```
 
-The scheduler uses `PROMPTGEN_DAILY_AT` and `PROMPTGEN_TIMEZONE`, acquires and renews a tenant-scoped PostgreSQL lease when hosted metadata is configured, and skips companies with a successful hosted run in the preceding 20 hours. Failed runs remain eligible for retry. Without PostgreSQL it falls back to the local SQLite lease.
+The scheduler uses `PROMPTGEN_DAILY_AT` and `PROMPTGEN_TIMEZONE`, acquires and renews a tenant-scoped PostgreSQL lease when hosted metadata is configured, and runs the four-company canary at most once per 20 hours. Each company gets a standard attempt and, if needed, one bounded expanded-recall attempt. Candidate runs remain staged until the independent two-pass OpenAI judge accepts them; a failed canary leaves the previous published prompt set intact. `GET /api/quality` exposes the latest report without private evidence. Without PostgreSQL, scheduling and canary history fall back to the persistent SQLite store.
 
 `npm run serve` opens the domain discovery UI at `http://127.0.0.1:4317` by default. A user can enter a configured or public domain, open recorded-company shortcuts, run a single-flight analysis, and inspect each prompt's provenance and source. Unknown domains use only their public website: valid B2B products can produce conservative `inferred-opportunity` prompts from current public capability evidence, while inaccessible or indeterminate domains return `insufficient_evidence`. Raw derive-only private quotes are not exposed by the UI. The customer-facing tracking set is capped at ten total prompts; pinned benchmarks take precedence and discovery fills the remaining slots.
 
@@ -106,7 +108,9 @@ By default, the fixture generator creates 20,300 artifacts per company—81,200 
 
 Run `npm run eval:prepare` after representative company runs to refresh the queues while preserving existing judgments by stable case ID. Reviewers use `npm run eval:annotate -- retrieval <reviewer-id>` and `npm run eval:annotate -- prompts <reviewer-id>`. `npm run eval:human` reports progress; `npm run eval:gate` is the non-zero release gate. The full labeling, overlap, and adjudication rules are in `eval/PROTOCOL.md`. Generated, fixture-derived, or model judgments are never counted as human labels.
 
-`npm run eval:judge` runs an independent OpenAI judge twice with reversed evidence order and checkpointed retries. Machine results remain separate from human annotations. `npm run eval:rerank` replays the current ranker against the frozen candidate pools without regenerating easier cases or calling a model. Reports distinguish record recall from duplicate-collapsed claim recall, and split pipeline-accepted from pipeline-rejected candidates; neither is presented as human quality evidence. An LLM cannot prove that relevant evidence absent from its candidate pool does not exist.
+`npm run eval:judge` runs an independent OpenAI judge twice with reversed evidence order and checkpointed retries. Machine results remain separate from human annotations. `npm run eval:rerank` replays the current ranker against privacy-safe, checked-in candidate pools without regenerating easier cases or calling a model. `npm run eval:release-gate` reranks all 150 retrieval cases, checks all 200 twice-judged prompt cases, enforces zero forbidden retrievals, and blocks material regression from `eval/machine-baseline.json`. GitHub CI and Render's pre-deploy command both run this machine-only gate. Reports distinguish record recall from duplicate-collapsed claim recall, and split pipeline-accepted from pipeline-rejected candidates; neither is presented as human quality evidence. An LLM cannot prove that relevant evidence absent from its candidate pool does not exist.
+
+`npm run canary:reassess` is an outage-recovery command: it grades staged sets that previously failed before a valid quality verdict existed. A run with a completed judge score is never re-judged until it passes, preventing repeated sampling from turning a failing set into a passing one by chance.
 
 Real private connectors implement the same `Connector` interface and must emit `SourceArtifact` values with genuine `private` visibility. Fixture provenance is validated and cannot be mistaken for connected customer data.
 

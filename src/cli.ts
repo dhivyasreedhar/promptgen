@@ -5,6 +5,8 @@ import { evaluateIndependentBenchmark } from "./eval-benchmark.js";
 import { evaluateHumanAnnotations, prepareHumanEvaluation } from "./eval-human.js";
 import { readOpenAiJudgeReport, rerankFrozenRetrievalCorpus, runOpenAiJudge } from "./eval-llm-judge.js";
 import { runCompany } from "./pipeline/run.js";
+import { reassessStagedCanaries, runDailyCanaries } from "./quality/canary.js";
+import { evaluateReleaseGate } from "./quality/release-gate.js";
 import { safeEmbeddingText } from "./privacy/transform.js";
 import { scheduler } from "./scheduler.js";
 import { serve } from "./server.js";
@@ -65,6 +67,24 @@ switch (command) {
   case "eval-rerank":
     process.stdout.write(`${JSON.stringify(await rerankFrozenRetrievalCorpus(config), null, 2)}\n`);
     break;
+  case "eval-release-gate": {
+    const report = await evaluateReleaseGate(config);
+    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+    process.exitCode = report.passed ? 0 : 1;
+    break;
+  }
+  case "canary": {
+    const report = await runDailyCanaries(config, fixtures);
+    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+    process.exitCode = report.passed ? 0 : 1;
+    break;
+  }
+  case "canary-reassess": {
+    const report = await reassessStagedCanaries(config);
+    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+    process.exitCode = report.passed ? 0 : 1;
+    break;
+  }
   case "serve":
     await serve(config, fixtures);
     break;
@@ -122,6 +142,6 @@ switch (command) {
     break;
   }
   default:
-    process.stdout.write(["Manicule Promptgen V2", "", "Commands:", "  run <company> [--fixtures]", "  run-all [--fixtures]", "  scheduler [--fixtures]", "  serve [--fixtures]", "  eval (safety regression + human quality report)", "  eval-prepare", "  eval-human", "  eval-gate", "  eval-judge", "  eval-judge-report", "  eval-rerank", "  postgres-migrate", "  postgres-health", "  postgres-search <company-id> <query>", "  postgres-embed <company-id> [limit]", ""].join("\n"));
+    process.stdout.write(["Manicule Promptgen V2", "", "Commands:", "  run <company> [--fixtures]", "  run-all [--fixtures]", "  scheduler [--fixtures]", "  canary [--fixtures]", "  canary-reassess", "  serve [--fixtures]", "  eval (safety regression + human quality report)", "  eval-prepare", "  eval-human", "  eval-gate", "  eval-judge", "  eval-judge-report", "  eval-rerank", "  eval-release-gate", "  postgres-migrate", "  postgres-health", "  postgres-search <company-id> <query>", "  postgres-embed <company-id> [limit]", ""].join("\n"));
     if (command !== "help") process.exitCode = 1;
 }

@@ -5,7 +5,7 @@ services:
     plan: starter
     healthCheckPath: /healthz
     autoDeploy: true
-    preDeployCommand: node dist/src/cli.js postgres-migrate
+    preDeployCommand: node dist/src/cli.js postgres-migrate && node dist/src/cli.js eval-release-gate
     disk:
       name: promptgen-data
       mountPath: /app/persist

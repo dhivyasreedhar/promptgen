@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "approvedAt": "2026-09-06T00:00:00.000Z",
+  "provider": "openai:gpt-5-mini",
+  "metrics": {
+    "uniqueClaimRecallAt12": 0.6510416666666666,
+    "precisionAt12": 0.4715909090909091,
+    "forbiddenHitRate": 0,
+    "acceptedPromptRate": 0.7777777777777778,
+    "rejectedPromptRate": 0.6636363636363637,
+    "recommendationLikelihood": 4.127777777777778,
+    "evidenceEntailment": 3.9166666666666665
+  }
+}

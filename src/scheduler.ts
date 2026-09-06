@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { AppConfig } from "./config.js";
-import { runCompany } from "./pipeline/run.js";
+import { runDailyCanaries } from "./quality/canary.js";
 import { EvidenceDatabase } from "./store/database.js";
 import { PostgresMetadataStore } from "./store/postgres-metadata.js";
 import { log } from "./util.js";
@@ -27,11 +27,9 @@ export async function runDueCompanies(config: AppConfig, fixtures: boolean, owne
   }, 60 * 60_000);
   renewal.unref();
   try {
-    for (const company of config.companies) {
-      const last = hosted ? await hosted.lastSuccessfulRunAt(company.id) : db.lastSuccessfulRunAt(company.id);
-      if (last && now.getTime() - Date.parse(last) < 20 * 60 * 60_000) continue;
-      await runCompany(config, company, { fixtures });
-    }
+    const lastCanary = db.latestCanaryReport<{ completedAt: string; state?: string }>();
+    const due = !lastCanary || lastCanary.state !== "completed" || now.getTime() - Date.parse(lastCanary.completedAt) >= 20 * 60 * 60_000;
+    if (due) await runDailyCanaries(config, fixtures);
   } finally {
     clearInterval(renewal);
     if (hosted) { await hosted.releaseLock("daily-run", owner); await hosted.close(); }

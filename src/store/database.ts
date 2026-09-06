@@ -114,6 +114,11 @@ export class EvidenceDatabase implements Disposable {
         attempts INTEGER NOT NULL DEFAULT 0, max_attempts INTEGER NOT NULL DEFAULT 3, available_at TEXT
       );
       CREATE INDEX IF NOT EXISTS run_jobs_status_created ON run_jobs(status, created_at);
+      CREATE TABLE IF NOT EXISTS canary_reports (
+        id TEXT PRIMARY KEY, started_at TEXT NOT NULL, completed_at TEXT NOT NULL,
+        passed INTEGER NOT NULL, report_json TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS canary_reports_completed ON canary_reports(completed_at DESC);
     `);
     this.ensureColumn("evidence", "acl_scopes_json", "TEXT NOT NULL DEFAULT '[\"company\"]'");
     this.ensureColumn("evidence", "lifecycle", "TEXT NOT NULL DEFAULT 'unknown'");
@@ -125,6 +130,7 @@ export class EvidenceDatabase implements Disposable {
     this.ensureColumn("run_jobs", "attempts", "INTEGER NOT NULL DEFAULT 0");
     this.ensureColumn("run_jobs", "max_attempts", "INTEGER NOT NULL DEFAULT 3");
     this.ensureColumn("run_jobs", "available_at", "TEXT");
+    this.ensureColumn("runs", "published", "INTEGER NOT NULL DEFAULT 1");
   }
 
   private ensureColumn(table: string, column: string, definition: string): void {
@@ -253,13 +259,32 @@ export class EvidenceDatabase implements Disposable {
     return rows.map((row, index) => ({ record: rowToEvidence(row), lexicalRank: index + 1 }));
   }
 
-  startRun(id: string, companyId: string, startedAt: string): void {
-    this.db.prepare("INSERT INTO runs(id, company_id, status, started_at) VALUES (?, ?, 'running', ?)").run(id, companyId, startedAt);
+  startRun(id: string, companyId: string, startedAt: string, published = true): void {
+    this.db.prepare("INSERT INTO runs(id, company_id, status, started_at, published) VALUES (?, ?, 'running', ?, ?)").run(id, companyId, startedAt, Number(published));
   }
 
   finishRun(result: RunResult): void {
     this.db.prepare("UPDATE runs SET status = ?, completed_at = ?, result_json = ?, error = ? WHERE id = ?")
       .run(result.status, result.completedAt, JSON.stringify(result), result.error ?? null, result.runId);
+  }
+
+  publishRun(runId: string): void {
+    this.db.prepare("UPDATE runs SET published=1 WHERE id=? AND status='complete'").run(runId);
+  }
+
+  recordCanaryReport<T extends { id: string; startedAt: string; completedAt: string; passed: boolean }>(report: T): void {
+    this.db.prepare("INSERT OR REPLACE INTO canary_reports(id,started_at,completed_at,passed,report_json) VALUES(?,?,?,?,?)")
+      .run(report.id, report.startedAt, report.completedAt, Number(report.passed), JSON.stringify(report));
+  }
+
+  latestCanaryReport<T>(): T | undefined {
+    const row = this.db.prepare("SELECT report_json FROM canary_reports ORDER BY completed_at DESC LIMIT 1").get() as { report_json: string } | undefined;
+    return row ? JSON.parse(row.report_json) as T : undefined;
+  }
+
+  canaryReports<T>(limit = 20): T[] {
+    const rows = this.db.prepare("SELECT report_json FROM canary_reports ORDER BY completed_at DESC LIMIT ?").all(limit) as Array<{ report_json: string }>;
+    return rows.map(row => JSON.parse(row.report_json) as T);
   }
 
   appendTrace(event: TraceEvent): void {
@@ -277,7 +302,7 @@ export class EvidenceDatabase implements Disposable {
   }
 
   lastSuccessfulRunAt(companyId: string): string | undefined {
-    const row = this.db.prepare("SELECT completed_at FROM runs WHERE company_id = ? AND status IN ('complete','insufficient_evidence') ORDER BY completed_at DESC LIMIT 1")
+    const row = this.db.prepare("SELECT completed_at FROM runs WHERE company_id = ? AND published=1 AND status IN ('complete','insufficient_evidence') ORDER BY completed_at DESC LIMIT 1")
       .get(companyId) as { completed_at: string } | undefined;
     return row?.completed_at;
   }
@@ -285,10 +310,28 @@ export class EvidenceDatabase implements Disposable {
   latestResults(): RunResult[] {
     const rows = this.db.prepare(`
       SELECT r.result_json FROM runs r
-      JOIN (SELECT company_id, MAX(started_at) AS started_at FROM runs WHERE result_json IS NOT NULL GROUP BY company_id) latest
+      JOIN (SELECT company_id, MAX(started_at) AS started_at FROM runs WHERE published=1 AND result_json IS NOT NULL GROUP BY company_id) latest
         ON latest.company_id=r.company_id AND latest.started_at=r.started_at
       ORDER BY r.company_id
     `).all() as Array<{ result_json: string }>;
+    return rows.map(row => JSON.parse(row.result_json) as RunResult);
+  }
+
+  latestStagedResults(): RunResult[] {
+    const rows = this.db.prepare(`
+      SELECT r.result_json FROM runs r
+      JOIN (SELECT company_id, MAX(started_at) AS started_at FROM runs WHERE published=0 AND status='complete' AND result_json IS NOT NULL GROUP BY company_id) latest
+        ON latest.company_id=r.company_id AND latest.started_at=r.started_at
+      ORDER BY r.company_id
+    `).all() as Array<{ result_json: string }>;
+    return rows.map(row => JSON.parse(row.result_json) as RunResult);
+  }
+
+  stagedResultsAfterLastPublished(): RunResult[] {
+    const rows = this.db.prepare(`SELECT r.result_json FROM runs r
+      WHERE r.published=0 AND r.status='complete' AND r.result_json IS NOT NULL
+        AND r.started_at > COALESCE((SELECT MAX(p.started_at) FROM runs p WHERE p.company_id=r.company_id AND p.published=1), '')
+      ORDER BY r.company_id, r.started_at DESC`).all() as Array<{ result_json: string }>;
     return rows.map(row => JSON.parse(row.result_json) as RunResult);
   }
 

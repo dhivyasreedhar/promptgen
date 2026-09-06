@@ -17,6 +17,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=build /app/dist ./dist
 COPY config ./config
+COPY eval ./eval
 COPY infra ./infra
 RUN mkdir -p /app/data /app/runs /app/fixtures/private && chown -R node:node /app
 USER node
