@@ -144,6 +144,12 @@ describe("selectPrompts", () => {
     expect(selectPrompts([core, enterprise], 2).discovery).toHaveLength(1);
   });
 
+  it("collapses AI-assisted summaries and automated postmortem creation", () => {
+    const summary = { ...candidate(0), text: "What tools help teams run retrospectives with AI-assisted incident summaries?", semanticKey: "ai-retrospective-summaries" };
+    const creation = { ...candidate(1), text: "What incident platforms automate postmortem creation?", semanticKey: "automated-postmortem-creation" };
+    expect(selectPrompts([summary, creation], 2).discovery).toHaveLength(1);
+  });
+
   it("caps peripheral compliance, pricing, and setup prompts when core workflows are available", () => {
     const core = Array.from({ length: 8 }, (_, index) => candidate(index));
     const peripheral = [
