@@ -145,7 +145,7 @@ const CONCEPTS = [
   [/\b(?:postmortems?|post-mortems?|retrospectives?)\b/i, /\b(?:audit|timeline)\b/i],
   [/\bteamwork\b.{0,80}\bgraph\b|\bgraph\b.{0,80}\bteamwork\b/i],
   [/\bproduct discovery\b/i],
-  [/\b(?:large|huge|massive)\b.{0,60}\b(?:repo|repos|repository|repositories|monorepo|monorepos)\b/i],
+  [/\b(?:large|huge|massive)\b.{0,120}\b(?:repo|repos|repository|repositories|monorepo|monorepos)\b/i],
   [/\b(?:postmortems?|post-mortems?|retrospectives?)\b/i, /\b(?:summary|summaries|summarize|generate|write|draft)\b/i],
   [/\bpagerduty\b/i, /\b(?:alternative|alternatives|migrate|migration|replace|replacing|switch|switching|away)\b/i],
   // Different generations often describe the same end-to-end agent-run
@@ -163,10 +163,11 @@ function conflictsWithTrackingPrompt(candidate: ValidatedCandidate, prompt: Trac
   const candidateText = candidate.text.toLowerCase();
   const promptText = prompt.text.toLowerCase();
   const sharedNamedFacet = NAMED_FACETS.some(facet => candidateText.includes(facet) && promptText.includes(facet));
+  const broadNamedFacetBenchmark = sharedNamedFacet && /\b(?:best|top|recommend|recommended)\b/.test(promptText);
   const distinctiveOverlap = setJaccard(semanticTokens(candidate.text), semanticTokens(prompt.text));
   const keyOverlap = candidate.semanticKey && prompt.semanticKey ? setJaccard(keyTokens(candidate.semanticKey), keyTokens(prompt.semanticKey)) : 0;
   const sharedConcept = CONCEPTS.some(patterns => patterns.every(pattern => pattern.test(candidate.text)) && patterns.every(pattern => pattern.test(prompt.text)));
-  return jaccard(candidate.text, prompt.text) >= 0.65 || sharedConcept || keyOverlap >= 0.3 || (sharedNamedFacet && distinctiveOverlap >= 0.3);
+  return jaccard(candidate.text, prompt.text) >= 0.65 || sharedConcept || keyOverlap >= 0.3 || broadNamedFacetBenchmark || (sharedNamedFacet && distinctiveOverlap >= 0.3);
 }
 
 const KEY_SYNONYMS: Record<string, string> = {

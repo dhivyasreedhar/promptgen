@@ -132,6 +132,12 @@ describe("selectPrompts", () => {
     expect(selectPrompts([retrospective, postmortem, migration, alternatives], 4).discovery).toHaveLength(2);
   });
 
+  it("collapses enterprise multi-repository and large monorepo formulations", () => {
+    const multiRepository = { ...candidate(0), text: "What tools help large engineering teams enforce consistent code quality standards across complex, multi-repository codebases?", semanticKey: "enterprise-scale-code-quality-enforcement" };
+    const monorepo = { ...candidate(1), text: "Which AI code review tools are designed to handle large, complex monorepos without degraded review quality?", semanticKey: "large-monorepo-code-review" };
+    expect(selectPrompts([multiRepository, monorepo], 2).discovery).toHaveLength(1);
+  });
+
   it("caps peripheral compliance, pricing, and setup prompts when core workflows are available", () => {
     const core = Array.from({ length: 8 }, (_, index) => candidate(index));
     const peripheral = [
