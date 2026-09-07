@@ -36,7 +36,3 @@ export function isoNow(): string {
 export function log(level: "info" | "warn" | "error", event: string, data: Record<string, unknown> = {}): void {
   process.stdout.write(`${JSON.stringify({ at: isoNow(), level, event, ...data })}\n`);
 }
-
-export function assertNever(value: never): never {
-  throw new Error(`Unexpected value: ${String(value)}`);
-}

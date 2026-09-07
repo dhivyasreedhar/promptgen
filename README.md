@@ -1,178 +1,203 @@
-#  Promptgen 
+# Manicule Promptgen
 
-An evidence-first daily pipeline for generating AI-agent tracking prompts. It ingests public and private company context, converts source artifacts into traceable evidence, retrieves context per evidence need, discovers supported buyer opportunities, and returns exactly ten discovery prompts or an explicit `insufficient_evidence` result.
+An evidence-first pipeline that turns a company domain and available customer context into ten buyer questions worth tracking across AI agents.
 
-## What is different
+- Live demo: <https://manicule-promptgen-demo.onrender.com>
+- Runtime: TypeScript on Node.js 24
+- Generation: Anthropic or OpenAI, with deterministic local fallback
+- Retrieval: PostgreSQL full-text/trigram search plus pgvector
+- Hosted deployment: Render web service, two background workers, Render cron, and Supabase Postgres
 
-- Raw artifacts, evidence, retrieved packs, opportunities, candidates, and final prompts have separate contracts.
-- Every evidence record preserves its source artifact and exact quote.
-- Current and historical artifact versions are retained; only current, unexpired, authorized evidence is retrieved.
-- Evidence carries ACL scopes, lifecycle state, validity windows, source authority, and source-specific freshness decay.
-- Extraction failures remain retryable and are never cached as successful empty results.
-- Private data is marked `derive-only` or `aggregate-only`; prompts are checked for verbatim leakage.
-- Boundary prompts do not consume discovery slots.
-- All candidate transformations must return through one validation function before selection.
-- Demand and capability are separate evidence roles: customer pain cannot double as proof that a feature exists.
-- A separate, batched critic pass verifies role-level entailment and removes irrelevant citations before selection.
-- If diversity leaves fewer than ten, a targeted uncovered-opportunity backfill loop runs through the same validation gates.
-- Every run produces `result.json`, `prompts.md`, and a candidate-level `trace.json`.
-- UI-triggered runs use a persisted lease-based queue with recovery, retry, cancellation, and source-health state.
+## What the demo contains
 
-## Quick start
+Public collection is real. The pipeline crawls a submitted company's website and documentation and can collect recent public GitHub issues and pull requests for configured organizations.
 
-Requires Node.js 24 or later.
+Private context is simulated. These four recorded demo companies have source-shaped synthetic data for Google Search Console, Slack, Intercom, Linear, CRM, sales calls, and Mintlify analytics:
+
+- Greptile (`greptile.com`)
+- Rootly (`rootly.com`)
+- Reducto (`reducto.ai`)
+- Supermemory (`supermemory.ai`)
+
+Every other submitted domain is public-only. The fixtures exercise noisy data, duplication, lifecycle changes, permissions, conflicting claims, and private-data transformations; they are never represented as real customer data.
+
+## How a run works
+
+1. Validate and normalize the domain.
+2. Return a complete published result immediately when it is less than 20 hours old, unless the user explicitly selects **Run again**.
+3. Enqueue a durable analysis job in Postgres.
+4. Collect public sources and, for the four demo companies, synthetic connected context.
+5. Normalize each source item into a versioned `SourceArtifact`.
+6. Extract smaller `EvidenceRecord` claims for demand, capability, constraints, comparisons, buyer language, and product changes.
+7. Apply tenant, ACL, lifecycle, freshness, and external-use policy before ranking.
+8. Discover buyer situations and run hybrid semantic, lexical, and structured retrieval.
+9. Generate candidate prompts, then retrieve again for each candidate's exact claims.
+10. Critique, repair, revalidate, deduplicate, and select a diverse final set.
+11. Publish exactly ten customer-facing prompt slots or an explicit `insufficient_evidence` result.
+
+Every published prompt keeps provenance and supporting evidence. Demand evidence proves that a buyer situation matters; capability evidence separately proves that the company could credibly be recommended for it.
+
+## Output contract
+
+- `complete`: exactly ten validated customer-facing prompts. Pinned benchmark prompts take precedence; discovery prompts fill the remaining slots.
+- `insufficient_evidence`: fewer than ten supported prompts, with the shortfall made explicit. The pipeline does not fabricate a complete set.
+- `failed`: an infrastructure, configuration, or provider failure. A failed run never replaces the last good published set.
+
+Prompts are labeled `observed-question`, `adapted-from-evidence`, or `inferred-opportunity`. Boundary prompts are reported separately and never consume the ten customer-facing slots.
+
+## Local setup
+
+Requirements:
+
+- Node.js 24 or later
+- An Anthropic or OpenAI key for model-backed generation
+- Optional Postgres with pgvector for the hosted retrieval path
 
 ```bash
-npm install
+npm ci
+cp .env.example .env
 PROMPTGEN_FIXTURE_SCALE=1 npm run fixtures:generate
-PROMPTGEN_PUBLIC_WEB=false PROMPTGEN_MODEL_PROVIDER=local npm run dev
-npm test
-npm run build
-```
-
-The local provider exists to exercise the pipeline without API credentials. It is deterministic and deliberately not represented as production-equivalent generation quality.
-
-## Model providers
-
-Anthropic is preferred automatically when both providers are configured:
-
-```bash
-export ANTHROPIC_API_KEY=...
-export ANTHROPIC_MODEL=claude-sonnet-4-6
-export PROMPTGEN_MODEL_TIMEOUT_MS=300000
-npm run dev
-```
-
-OpenAI is also supported:
-
-```bash
-export OPENAI_API_KEY=...
-export OPENAI_MODEL=gpt-5-mini
-export PROMPTGEN_MODEL_PROVIDER=openai
-npm run dev
-```
-
-Set `PROMPTGEN_MODEL_PROVIDER` to `auto`, `anthropic`, `openai`, or `local`. The exact provider and model are recorded in every result and trace.
-
-## Commands
-
-```bash
-npx tsx src/cli.ts run greptile --fixtures
-npx tsx src/cli.ts run-all --fixtures
-npx tsx src/cli.ts eval
-npm run eval:prepare
-npm run eval:human
-npm run eval:annotate -- retrieval reviewer-a --limit=25
-npm run eval:annotate -- prompts reviewer-a --limit=25
-npm run eval:gate
-npm run eval:judge
-npm run eval:judge:report
-npm run eval:release-gate
-npm run canary
-npx tsx src/cli.ts scheduler --fixtures
 npm run serve
 ```
 
-The scheduler uses `PROMPTGEN_DAILY_AT` and `PROMPTGEN_TIMEZONE`, acquires and renews a tenant-scoped PostgreSQL lease when hosted metadata is configured, and runs the four-company canary at most once per 20 hours. Each company gets a standard attempt and, if needed, one bounded expanded-recall attempt. Candidate runs remain staged until the independent two-pass OpenAI judge accepts them; a failed canary leaves the previous published prompt set intact. Canary checkpoints and final reports are shared through PostgreSQL, and `GET /api/quality` exposes the latest report without private evidence. Without PostgreSQL, scheduling and canary history fall back to the persistent SQLite store.
+Open <http://127.0.0.1:4317>.
 
-`npm run serve` opens the domain discovery UI at `http://127.0.0.1:4317` by default. A user can enter a configured or public domain, open recorded-company shortcuts, run a single-flight analysis, and inspect each prompt's provenance and source. Unknown domains use only their public website: valid B2B products can produce conservative `inferred-opportunity` prompts from current public capability evidence, while inaccessible or indeterminate domains return `insufficient_evidence`. Raw derive-only private quotes are not exposed by the UI. The customer-facing tracking set is capped at ten total prompts; pinned benchmarks take precedence and discovery fills the remaining slots.
-
-A normal domain submission first checks the shared published-run registry. A complete ten-prompt result less than 20 hours old is returned immediately without creating a duplicate job. Partial, failed, and stale results never qualify for this fast path. The UI's **Run again** action sets an explicit force flag, preserving a deliberate way to refresh a domain before its daily window expires. Once a refresh starts, artifact hashes, extractor versions, stored embeddings, and model cache keys prevent unchanged downstream work from being repeated.
-
-For a hosted demo, set `PROMPTGEN_HOST=0.0.0.0` and either a `PROMPTGEN_ACCESS_PASSWORD` of at least 12 characters or the explicit opt-in `PROMPTGEN_ALLOW_PUBLIC_ACCESS=true`. Non-loopback serving fails closed unless one of those choices is configured. The platform-provided `PORT` is honored when `PROMPTGEN_PORT` is absent. Set `PROMPTGEN_INLINE_WORKER=false` on hosted web nodes. `render.yaml` defines a public web service, two stateless background workers, and a daily canary cron job. After the first Blueprint sync, manually add `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, and `DATABASE_URL` once to the `promptgen-shared` environment group; Render does not permit `sync: false` declarations inside a Blueprint-managed group. All three services then receive the same credentials without copying secret values into YAML.
-
-For a production host, run the one-shot command from the platform scheduler instead of keeping the process loop alive:
-
-```cron
-0 2 * * * cd /srv/promptgen && node dist/src/cli.js run-all
-```
-
-## Initial sources
-
-Public connectors:
-
-- Website and sitemap pages, origin-pinned across redirects.
-- Recent public GitHub issues and pull requests.
-
-Private fixture connectors:
-
-- Google Search Console
-- Slack
-- Intercom
-- Linear
-- CRM
-- sales calls
-- Mintlify analytics
-
-By default, the fixture generator creates 20,300 artifacts per company—81,200 total—with source-specific formats, a year of timestamps, repeated evidence, lifecycle ambiguity, and approximately 65% operational noise. Set `PROMPTGEN_FIXTURE_SCALE=1` for a 4,060-record-per-company development corpus. The generated topic coverage check under `fixtures/gold/` is intentionally reported as fixture consistency, not independent retrieval quality.
-
-`npm run eval` reports three deliberately separate layers. Fixture coverage checks generator consistency. The five-case hand-authored corpus in `fixtures/benchmark/retrieval.json` is an adversarial safety regression for roadmap-versus-shipped evidence, expired claims, ACL restrictions, `never-expose`, noise, and vocabulary expansion. It is not presented as evidence of production retrieval quality. The human-evaluation report reads a 150-case retrieval queue and a 200-prompt grading queue under `eval/annotations`; it remains failed until actual reviewers meet the documented coverage and quality thresholds.
-
-Run `npm run eval:prepare` after representative company runs to refresh the queues while preserving existing judgments by stable case ID. Reviewers use `npm run eval:annotate -- retrieval <reviewer-id>` and `npm run eval:annotate -- prompts <reviewer-id>`. `npm run eval:human` reports progress; `npm run eval:gate` is the non-zero release gate. The full labeling, overlap, and adjudication rules are in `eval/PROTOCOL.md`. Generated, fixture-derived, or model judgments are never counted as human labels.
-
-`npm run eval:judge` runs an independent OpenAI judge twice with reversed evidence order and checkpointed retries. Machine results remain separate from human annotations. `npm run eval:rerank` replays the current ranker against privacy-safe, checked-in candidate pools without regenerating easier cases or calling a model. `npm run eval:release-gate` reranks all 150 retrieval cases, checks all 200 twice-judged prompt cases, enforces zero forbidden retrievals, and blocks material regression from `eval/machine-baseline.json`. GitHub CI and Render's pre-deploy command both run this machine-only gate. Reports distinguish record recall from duplicate-collapsed claim recall, and split pipeline-accepted from pipeline-rejected candidates; neither is presented as human quality evidence. An LLM cannot prove that relevant evidence absent from its candidate pool does not exist.
-
-`npm run canary:reassess` is an outage-recovery command: it grades staged sets that previously failed before a valid quality verdict existed. A run with a completed judge score is never re-judged until it passes, preventing repeated sampling from turning a failing set into a passing one by chance.
-
-Real private connectors implement the same `Connector` interface and must emit `SourceArtifact` values with genuine `private` visibility. Fixture provenance is validated and cannot be mistaken for connected customer data.
-
-## Storage
-
-SQLite through the stable `better-sqlite3` driver remains the executable local/test adapter and disposable per-worker scratch index. Local mode can still store artifacts, evidence, FTS5 indexes, jobs, runs, cache entries, and traces in one file. Hosted correctness no longer depends on that file or on a Render disk.
-
-## Hosted Postgres metadata
-
-The hosted context contract is in `infra/postgres/001_initial.sql`, with a local pgvector service in `compose.postgres.yml`. It includes tenant-scoped companies, encrypted-credential slots, connector cursors and health, object-store keys for raw artifacts, version/tombstone state, evidence ACLs and lifecycle, PostgreSQL full-text search, pgvector indexes, retryable/cancellable jobs, traces, prompt lifecycle, feedback, observations, and row-level security.
+The deterministic local provider is useful for exercising the pipeline without credentials, but it is not production-equivalent generation:
 
 ```bash
+PROMPTGEN_PUBLIC_WEB=false \
+PROMPTGEN_MODEL_PROVIDER=local \
+npm run serve
+```
+
+## Model configuration
+
+`PROMPTGEN_MODEL_PROVIDER` accepts `auto`, `anthropic`, `openai`, or `local`. With `auto`, Anthropic is preferred when configured and OpenAI is used as failover. The exact provider and model are recorded in every result and trace.
+
+```bash
+ANTHROPIC_API_KEY=...
+ANTHROPIC_MODEL=claude-sonnet-4-6
+
+OPENAI_API_KEY=...
+OPENAI_MODEL=gpt-5-mini
+OPENAI_JUDGE_MODEL=gpt-4.1-mini
+OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+PROMPTGEN_EMBEDDING_PROVIDER=openai
+```
+
+When both API keys are present, Anthropic generates candidates and the OpenAI judge independently checks prompt quality and grounding. OpenAI is also the hosted embedding provider. Local development can instead use `nomic-embed-text` through Ollama or set `PROMPTGEN_EMBEDDING_PROVIDER=disabled` for lexical-only retrieval.
+
+## Common commands
+
+```bash
+# UI and company runs
+npm run serve
+npx tsx src/cli.ts run greptile --fixtures
+npx tsx src/cli.ts run-all --fixtures
+
+# Verification
+npm run check
+npm test
+npm run build
+npm run eval:release-gate
+
+# Evaluation maintenance
+npm run eval
+npm run eval:prepare
+npm run eval:human
+npm run eval:judge
+npm run eval:judge:report
+npm run eval:rerank
+
+# Hosted Postgres
 npm run postgres:migrate
 npm run postgres:health
 npm run postgres:search -- greptile "large monorepo code review"
 npm run postgres:embed -- greptile 500
+
+# Operations
+npm run canary
+npm run canary:reassess
+npm run backup:verify
 ```
 
-Semantic retrieval supports OpenAI `text-embedding-3-small` for hosted deployment and the open-source `nomic-embed-text` model through local Ollama. The checked-in Render configuration uses OpenAI because a Render worker cannot reach a developer laptop's Ollama process. For local private embedding, set `PROMPTGEN_EMBEDDING_PROVIDER=ollama`, install Ollama, run `ollama pull nomic-embed-text`, and keep its loopback service available. Set `PROMPTGEN_EMBEDDING_PROVIDER=disabled` for lexical-only operation.
+The full human-labeling protocol is in [`eval/PROTOCOL.md`](eval/PROTOCOL.md).
 
-When `DATABASE_URL` is configured, Postgres is the canonical hosted data plane. It stores tenant-scoped artifacts, evidence claims and exact quotes, ACLs, vector indexes, source health, published runs, prompt lifecycle, complete traces, durable jobs, and the shared model cache. Full artifact bodies are AES-256-GCM encrypted by the application and stored in `shared_objects`; database operators never receive plaintext through that table. A configured shared-data write is part of run completion rather than a fire-and-forget side effect. Stable local identifiers are mapped to deterministic UUIDs for the hosted schema.
+## Hosted architecture
 
-The hosted web process only validates requests, enqueues jobs, and reads shared results. Dedicated workers use atomic `FOR UPDATE SKIP LOCKED` claims, renewable leases, cancellation, bounded exponential retry, and one-active-job-per-company enforcement. Multiple replicas can safely run at once because evidence, encrypted bodies, cache entries, jobs, runs, and traces are shared; each worker's SQLite file is disposable. Public-only jobs remain ahead of fixture-heavy jobs in queue ordering. Scale queue throughput by changing the worker `numInstances`, not by adding synchronous work to the web process.
+When `DATABASE_URL` is configured, Postgres is the canonical hosted data plane. It stores tenant-scoped artifacts, evidence and exact quotes, ACLs, source health, embeddings, model cache entries, jobs, runs, traces, prompt lifecycle, and canary reports.
 
-For Supabase, use the session-pooler URL when the runtime has no IPv6 route. `PGHOST`, `PGUSER`, `PGPORT`, `PGDATABASE`, and optionally `PGPASSWORD` override the corresponding URL components without logging the resolved secret. Set a distinct `PROMPTGEN_TENANT_ID` for each isolated customer tenant.
+Full source bodies are encrypted by the application with AES-256-GCM before being written to `shared_objects`. Hosted correctness does not depend on a Render disk. SQLite remains a local/test adapter and disposable per-worker scratch store.
 
-The checked-in migration runner records SHA-256 checksums and rejects edits to already-applied migrations. `postgres:health` verifies the server, pgvector extension, and forced-RLS coverage without returning credentials. Hosted context sync has been load-tested with the full 20,300-artifact/16,403-evidence Greptile fixture. Runtime retrieval now uses reciprocal-rank fusion between hosted search and the local recall guardrail. Hybrid search applies current-version, tombstone, ACL, safe-use, lifecycle, and validity filters before full-text, trigram, confidence, authority, freshness, and optional vector scoring. Exact duplicate and historical supersession relations are refreshed when context changes; ambiguous contradictions are left for review rather than inferred from fragile negation matching.
+The web process only validates requests, enqueues jobs, and reads shared results. Workers claim jobs using `FOR UPDATE SKIP LOCKED`, renew leases, support cancellation and bounded retry, and enforce one active job per company. Public-only jobs receive queue priority over fixture-heavy jobs.
 
-Each daily run embeds up to `PROMPTGEN_EMBEDDING_RUN_LIMIT` newly extracted records (500 by default). Historical backfills are also explicit, capped, and resumable so first-run prompt generation is not blocked by a large corpus. `postgres:embed` uses 768-dimensional local `nomic-embed-text` vectors by default and accepts at most 5,000 records per invocation. Embeddings live in a tenant-scoped table keyed by provider and model, with their input hash and dimension recorded; replacing the model does not mutate evidence or mix incompatible vector spaces. Runtime embedding failure is traced and degrades to hosted lexical retrieval plus the local recall guardrail rather than failing the customer run.
+`render.yaml` defines:
 
-Set `PROMPTGEN_OBJECT_ENCRYPTION_KEY` to a base64-encoded 32-byte key to write raw artifact bodies through the object-store abstraction. The local implementation uses AES-256-GCM with per-object nonces, authenticated tenant object keys, mode-0600 atomic writes, and no plaintext files. Hosted workers store the same encrypted payloads in PostgreSQL so bodies remain available across worker restarts and replicas; the interface remains compatible with a future S3 or Supabase Storage implementation if volume requires it.
+- One public web service with inline work disabled
+- Two stateless background worker instances
+- One daily canary cron at `10:00 UTC`
+- A shared environment group for non-secret configuration
 
-Successful runs also maintain a tenant-scoped prompt registry with stable keys, first/last-seen timestamps, active state, evidence history and scores. Every run records added/retained/removed prompt diffs. The loopback UI records human approvals/rejections, while `/api/prompts/:company/:prompt/observations` accepts downstream agent mention, citation and competitor outcomes. Rejections suppress the same stable prompt on later runs; approvals and repeated brand-losing observations get a bounded selection preference. Cross-origin mutations are rejected.
+After the first Blueprint sync, add `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, and `DATABASE_URL` to the `promptgen-shared` environment group. Render generates `PROMPTGEN_OBJECT_ENCRYPTION_KEY`. The public demo intentionally has no application authentication; authentication and real tenant identity propagation are required before connecting customer data.
 
-Public-only domains use a bounded fast path: up to sixteen high-value pages are fetched, current public capability statements seed opportunities without a separate model-planning round, sixteen model candidates plus conservative evidence-derived coverage candidates are generated, and judge batches are evaluated concurrently. Connected-context runs request twenty-four model candidates so strict claim review and semantic deduplication still leave ten distinct situations. When both API keys are configured, Anthropic generates and `OPENAI_JUDGE_MODEL` independently verifies the candidates. The final gate fails closed if any audience, capability, integration, constraint, performance, pricing, purchase-channel, or modality clause is unsupported. Selection requires at least eight distinct buying situations and caps peripheral compliance, pricing, and setup prompts when enough core-workflow candidates exist.
+Use Supabase's IPv4-compatible session-pooler URL when the runtime has no IPv6 route. Migrations are checksum-protected and must never be edited after application.
 
-Every prompt is labeled `observed-question`, `adapted-from-evidence`, or `inferred-opportunity` and carries audience, use case, constraint, and decision-stage coverage. The UI exposes a redacted customer excerpt or public quote, source locator/link, buyer-intent class, and the exact privacy rules applied. Approvals pin immutable benchmark prompts; daily discovery prompts remain a separate evolving set. Structured rejection reasons can create company-wide audience, use-case, or semantic rules that are applied before selection on subsequent runs.
+## Retrieval and privacy guarantees
 
-Private model egress is fail-closed. `never-expose` evidence is omitted, aggregate-only evidence becomes an aggregate description, and derive-only free text becomes a taxonomy summary containing no original sentence, names, identifiers, project names, or metrics. The trace stores input/output hashes, policy, safe preview, and transformation rule names without duplicating raw private text. Local embeddings and lexical retrieval may use authorized context, but external prompt models receive only this transformed representation.
+- Eligibility is checked before relevance: wrong-tenant, unauthorized, expired, deprecated, planned, and `never-expose` records cannot win ranking.
+- Hosted retrieval fuses Postgres full-text search, trigram matching, and 768-dimensional pgvector embeddings using reciprocal-rank fusion.
+- Candidate-specific retrieval checks the exact audience, capability, integration, constraint, performance, pricing, purchase-channel, and modality claims before acceptance.
+- Repaired and backfilled prompts return through the complete validator.
+- Near-duplicate evidence is collapsed while unresolved contradictions remain visible in the trace.
+- `derive-only` context becomes de-identified taxonomy; `aggregate-only` context becomes a summary; `never-expose` context is omitted from external model calls.
+- Model transformations record policy and input/output hashes without copying raw private content into the trace.
 
-Application roles must not own these tables and every transaction must set `app.tenant_id`; row-level security is a defense-in-depth boundary, not a replacement for authorization checks. Migration 003 creates a restricted `promptgen_app` role, and the data adapter drops into that role after setting the tenant inside every transaction. This prevents the configured owner connection from bypassing RLS. A deployed service should ultimately connect with a dedicated login role rather than the administrative `postgres` account. Migration 013 adds the shared encrypted object store, exact evidence quotes, published-run marker, and cross-worker model cache.
+## Evaluation
 
-## Result contract
+The repository keeps machine and human evaluation separate:
 
-- `complete`: exactly ten validated discovery prompts.
-- `insufficient_evidence`: fewer than ten, with explicit missing evidence and recommended sources.
-- `failed`: infrastructure or provider failure; never treated as a completed daily run.
+- 109 unit and integration tests across 26 files cover contracts, policy, extraction, ranking, validation, selection, scheduling, storage, and API behavior.
+- Five hand-authored adversarial retrieval cases guard against stale claims, planned capabilities, ACL failures, `never-expose` leakage, and vocabulary mismatch. They are regression tests, not proof of retrieval quality.
+- A frozen 150-case retrieval corpus is judged twice by an independent OpenAI model and reranked without regenerating easier cases.
+- A frozen 200-prompt corpus measures buyer intent, recommendation likelihood, grounding, distinctness, and naturalness.
+- The release gate blocks material regression from `eval/machine-baseline.json` and requires zero forbidden retrievals.
+- Human evaluation is not complete: 0/150 retrieval cases and 1/200 prompt cases currently have human review. Machine scores are never presented as human ground truth.
 
-Boundary prompts are always returned separately.
+Current frozen machine baseline:
 
-## Quality, lifecycle, and operations
+- Unique-claim recall@12: 65.1%
+- Precision@12: 47.2%
+- Forbidden retrieval rate: 0%
+- Accepted-prompt judge acceptance: 77.8%
+- Rejected-prompt judge rejection: 66.4%
+- Recommendation likelihood: 4.13/5
+- Evidence entailment: 3.92/5
 
-The safety regression reports recall at 3 and 12, reciprocal rank, precision, forbidden-hit rate, ACL/secret leakage, and stale-truth leakage over its five deterministic cases. Production-quality claims come only from the separate human evaluation: pooled retrieval judgments measure recall@3, recall@12, precision@12, forbidden hits, and reviewer agreement; prompt grades measure acceptance, buyer intent, recommendation likelihood, evidence entailment, distinctness, naturalness, and reviewer agreement. Context packs additionally reconcile near-duplicate capability evidence and contradictory current claims. A clear authority/freshness winner is retained with a trace decision; comparable contradictions are withheld rather than guessed.
+## Operational behavior
 
-Prompt continuity is keyed by the critic's semantic opportunity rather than exact wording. Human rejections suppress equivalent rewrites, approvals and brand-losing prompts receive a bounded preference, and every completed run records added, retained, and removed lifecycle events plus churn rate. The UI shows retention and churn alongside the prompt set.
+- `GET /healthz`: process liveness
+- `GET /readyz`: dependency readiness
+- `GET /metrics`: Prometheus-compatible counters and durations without tenant content
+- `GET /api/quality`: latest canary report without private evidence
 
-Buying-intent classification rejects support, implementation, retention, and operational questions even when adjacent product evidence exists. Each draft also triggers a candidate-specific hybrid retrieval pass before deterministic validation and model critique. Unresolved contradictions are attached to that retrieval trace rather than treated as capability truth. Selection maximizes coverage novelty and permits a second prompt from one opportunity only when its archetype and semantic key are both distinct.
+Failures are classified as transient, authentication, configuration, validation, cancellation, or unknown. Only retryable failures consume another queue attempt. Embedding degradation falls back to hosted lexical retrieval plus the local recall guardrail and remains visible in the trace.
 
-Operational endpoints are `GET /healthz`, `GET /readyz`, and Prometheus-compatible `GET /metrics`. Run and HTTP counters/durations are emitted without tenant content. Failures are classified as transient, authentication, configuration, validation, cancellation, or unknown; only retryable failures consume another queue attempt. Retrieval and embedding degradation remains explicit in the run trace. Run `npm run backup:verify` to create a SQLite online backup, open the restored copy, run its integrity check, compare critical table counts, and delete the temporary copy. PostgreSQL and object-store backup retention remains the responsibility of the selected managed providers and must be exercised in deployment runbooks.
+The daily canary runs the four configured fixture companies, allows one bounded expanded-recall retry, grades staged prompt sets, and preserves the previous published set when the new candidate fails. The UI reuses complete results under 20 hours old; explicit refresh bypasses that result-level cache while artifact, extraction, embedding, and model caches still avoid unchanged downstream work.
 
-## Current production boundary
+## Production boundary
 
-Hosted context and operational metadata are connected and tested against PostgreSQL 17 with pgvector, forced tenant RLS, checksum migrations, distributed jobs/leases, encrypted shared source bodies, a shared model cache, context catalog sync, hybrid retrieval, evidence relations, prompt lifecycle, feedback, canary reports, and trace persistence. Local open-source embeddings require no additional API credential. The remaining production dependencies are real connector OAuth/data, a dedicated database login role, and a second model/provider if cross-provider judging is required.
+Implemented today:
+
+- Public web and configured GitHub collection
+- Versioned evidence with lifecycle, freshness, ACLs, conflict handling, and traceable citations
+- Shared Postgres data plane with pgvector, encrypted source bodies, model cache, durable jobs, multiple workers, and daily canaries
+- Candidate-specific retrieval, independent critique, deterministic validation, exact slot selection, and prompt lifecycle tracking
+
+Still required before real customer deployment:
+
+- At least one real OAuth connector with cursors, pagination, rate limits, deletion handling, and permission tests
+- Authentication and a dedicated non-owner database login role
+- Cross-tenant isolation and security testing
+- Human adjudication of the retrieval and prompt corpora
+- Connector-level incremental fetching and realistic load testing
+- External object storage if source volume outgrows encrypted Postgres objects

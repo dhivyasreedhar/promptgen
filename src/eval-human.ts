@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { AppConfig } from "./config.js";
 import { EvidenceRetriever } from "./retrieval/retriever.js";
 import { EvidenceDatabase } from "./store/database.js";
-import { SOURCE_TYPES, type EvidenceKind, type EvidenceNeed, type TraceEvent } from "./types.js";
+import type { EvidenceKind, EvidenceNeed, TraceEvent } from "./types.js";
 
 const KINDS = ["capability", "demand", "constraint", "comparison", "language", "change"] as const;
 const statusSchema = z.enum(["pending", "reviewed", "adjudicated"]);
@@ -34,8 +34,8 @@ const promptCaseSchema = z.object({
 const retrievalCorpusSchema = z.object({ schemaVersion: z.literal(1), generatedAt: z.string(), targetCases: z.literal(150), cases: z.array(retrievalCaseSchema).length(150) });
 const promptCorpusSchema = z.object({ schemaVersion: z.literal(1), generatedAt: z.string(), targetCases: z.literal(200), cases: z.array(promptCaseSchema).length(200) });
 
-export type RetrievalAnnotationCase = z.infer<typeof retrievalCaseSchema>;
-export type PromptAnnotationCase = z.infer<typeof promptCaseSchema>;
+type RetrievalAnnotationCase = z.infer<typeof retrievalCaseSchema>;
+type PromptAnnotationCase = z.infer<typeof promptCaseSchema>;
 export interface HumanEvalReport {
   retrieval: { total: number; reviewed: number; adjudicated: number; recallAt3?: number; recallAt12?: number; precisionAt12?: number; forbiddenHitRate?: number; reviewerAgreement?: number };
   prompts: { total: number; graded: number; adjudicated: number; acceptanceRate?: number; averageBuyerIntent?: number; averageRecommendationLikelihood?: number; averageEvidenceEntailment?: number; averageDistinctness?: number; averageNaturalness?: number; reviewerAgreement?: number };

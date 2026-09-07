@@ -3,7 +3,7 @@ import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { PostgresMetadataStore } from "./postgres-metadata.js";
 
-export interface ObjectStore {
+interface ObjectStore {
   put(key: string, value: string): Promise<void>;
   get(key: string): Promise<string>;
   delete(key: string): Promise<void>;

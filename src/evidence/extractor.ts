@@ -3,7 +3,7 @@ import { normalizeText, stableId } from "../util.js";
 import { authorityFor, lifecycleFrom, scopesFrom } from "../context/policy.js";
 import { classifyBuyerIntent } from "../context/intent.js";
 
-export const EXTRACTOR_VERSION = "evidence-v1.4.0-page-context";
+const EXTRACTOR_VERSION = "evidence-v1.4.0-page-context";
 
 const DEMAND_SOURCES = new Set(["gsc", "slack", "intercom", "crm", "calls", "mintlify", "github"]);
 // Capability is an assertion about what exists, not the presence of a product

@@ -101,7 +101,6 @@ export async function rerankFrozenRetrievalCorpus(config: AppConfig): Promise<Ll
   using db = new EvidenceDatabase(config.dbPath);
   const evaluationTime = retrieval.generatedAt ? Date.parse(retrieval.generatedAt) : Date.now();
   for (const item of retrieval.cases) {
-    const companyId = String(item.companyId);
     const ids = item.candidateEvidenceIds as string[]; const byId = new Map(ids.flatMap(id => {
       const record = frozenEvidence.get(id); return record ? [record] : [];
     }).map(record => [record.id, record]));

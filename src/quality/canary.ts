@@ -18,7 +18,7 @@ export interface CanaryAttempt {
   failures: string[];
 }
 
-export interface CompanyCanaryResult {
+interface CompanyCanaryResult {
   companyId: string;
   passed: boolean;
   promotedRunId?: string;

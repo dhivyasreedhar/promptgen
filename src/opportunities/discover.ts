@@ -1,4 +1,4 @@
-import type { EvidencePack, Opportunity, SourceType } from "../types.js";
+import type { EvidencePack, Opportunity } from "../types.js";
 import { stableId } from "../util.js";
 import { evidenceBuyerIntent, isBuyingIntent } from "../context/intent.js";
 
@@ -44,9 +44,3 @@ function stageFor(intents: ReturnType<typeof evidenceBuyerIntent>[]): "discovery
 
 function bestClaim(claims: string[]): string { return claims.sort((a, b) => a.length - b.length)[0] ?? ""; }
 function aggregate(count: number, sourceCount: number): number { return Math.min(1, Math.log1p(count) / 4 + sourceCount * 0.12); }
-
-export function sourceCoverage(opportunities: Opportunity[]): Record<SourceType, number> {
-  const result = {} as Record<SourceType, number>;
-  for (const opportunity of opportunities) for (const source of opportunity.sources) result[source] = (result[source] ?? 0) + 1;
-  return result;
-}

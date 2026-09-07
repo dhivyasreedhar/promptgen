@@ -243,7 +243,7 @@ async function route(config: AppConfig, fixtures: boolean, hosted: PostgresMetad
   json(response, 404, { error: "Not found" });
 }
 
-export async function processJobs(config: AppConfig, hosted?: PostgresMetadataStore): Promise<void> {
+async function processJobs(config: AppConfig, hosted?: PostgresMetadataStore): Promise<void> {
   if (processing) return;
   processing = true;
   try {
